@@ -1,0 +1,20 @@
+[project]
+name = "pythonproject"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.141.1",
+    "uvicorn>=0.30.0",
+    "email-validator>=2.0.0",
+    "load-dotenv>=0.1.0",
+    "sqlalchemy>=2.0.52",
+    "aiomysql>=0.3.2",
+    "passlib>=1.7.4",
+    "jwt>=1.4.0",
+    "python-jose>=3.5.0",
+    "bcrypt==4.0.1",
+]
+
+[[tool.uv.index]]
+url = "https://mirrors.aliyun.com/pypi/simple"
+default = true
