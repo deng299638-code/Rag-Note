@@ -1,6 +1,9 @@
 import os
+from fastapi import HTTPException
+
 from dotenv import load_dotenv
-from sqlalchemy import text
+from fastapi import Depends
+from sqlalchemy import text, select
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
 from models.user import Base
@@ -15,7 +18,9 @@ ASYNC_DATABSE_URL = (f"mysql+aiomysql://{os.getenv('MYSQL_USER','root')}:"
 
 engine = create_async_engine(
     url=ASYNC_DATABSE_URL,
-    echo=True,#打印日志
+    pool_size=10,  # 连接池中保持的持久连接数
+    max_overflow=20,  # 连接池中允许创建的额外连接数
+    echo=False  # 输出sql日志
 )
 
 SessionLocal = async_sessionmaker(
@@ -23,6 +28,8 @@ SessionLocal = async_sessionmaker(
     class_=AsyncSession,
     expire_on_commit=False,
 )
+
+
 
 async def get_db():
     async with SessionLocal() as db:
@@ -35,6 +42,40 @@ async def get_db():
             await db.close()
 
 async def create_tables():
-    from models import note  # noqa: F401
+    from models import note,user,note_template# noqa: F401
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
+
+
+
+async def create_admin():
+    from models.user import User
+    from utils.security import hash_password
+    async with SessionLocal() as db:
+        result = await db.scalar(select(User).where(User.username == "admin"))
+    if result:
+        return
+    user = User(
+        username = 'admin',
+        email = 'admin@qq.com',
+        password = hash_password("123456")
+
+    )
+    db.add(user)
+    await db.commit()
+
+
+
+
+async def test_mysql():
+        try:
+            async with engine.begin() as con:
+                result = await con.execute(text("select 1"))
+                return result.scalar()
+
+        except Exception as e:
+            raise HTTPException(
+                status_code= 400,
+                detail= e,
+            )
+

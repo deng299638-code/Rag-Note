@@ -34,7 +34,7 @@ class TokenRefreshRequest(BaseModel):
 class UserResponse(BaseModel):
     uuid: str | None = None
     user_id: str | None = None
-    id: str | None = None
+    id: int | None = None
     username: str
     email: str
     telephone: str | None = None

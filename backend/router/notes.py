@@ -1,81 +1,81 @@
 import io
 import re
+
 from urllib.parse import quote
 import zipfile
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.responses import Response
+from typing import Annotated
+
 from db.db_config import get_db
+from exceptions.note_exceptions import NoteNotFoundError
 from models.note import Note
-from schemas.note_schemas import NoteCreate, NoteListResponse, NoteResponse, NoteUpdate,BatchIdsRequest,BatchPinRequest
+from schemas.common_schemas import ApiResponse, NoteStatsData
+from schemas.note_schemas import NoteCreate, NoteListResponse, NoteResponse, NoteUpdate, BatchIdsRequest, \
+    BatchPinRequest, BatchCategoryRequest, NoteQueryParams, SearchResponse
+from services.note_service import NoteService, get_note_service
 from utils.JWT import get_current_user_id
 
-note_router = APIRouter(prefix="/notes", tags=["notes"])
+note_router = APIRouter(prefix="/note", tags=["note"])
 
 
-@note_router.post("", response_model=NoteResponse, status_code=status.HTTP_201_CREATED)
+@note_router.post("/create", response_model=ApiResponse[NoteResponse], status_code=status.HTTP_201_CREATED)
 async def create_note(
     payload: NoteCreate,
     user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    service: NoteService = Depends(get_note_service),
 ):
-    note = Note(user_id=user_id, **payload.model_dump())
-    db.add(note)
-    await db.commit()
-    await db.refresh(note)
-    return note
+    note = await service.create(user_id,payload)
+    return {
+        "code": 201,
+        "message":"笔记创建成功",
+        "data":note,
+    }
 
 
-@note_router.get("", response_model=NoteListResponse)
+@note_router.get("/list", response_model=ApiResponse[NoteListResponse])
 async def list_notes(
+    params: Annotated[
+            NoteQueryParams,
+            Query(),
+        ],
     user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
-    category: str | None = Query(default= None),
-    tags : str | None = Query(default=None)
+    service: NoteService = Depends(get_note_service),
 
 ):
-    conditions = [Note.user_id == user_id]
-    if category != None:
-        conditions.append(Note.category == category)
-    if tags != None:
-        conditions.append(Note.tags == tags)
-    base = select(Note).where(*conditions)
-    total = await db.scalar(select(func.count()).select_from(base.subquery()))
-    result = await db.scalars(
-        base.order_by(Note.is_pinned.desc(),Note.updated_at.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-    )
-    return {"notes": result.all(), "total": total or 0}
-@note_router.get("/search",response_model=NoteListResponse)
+    result,total = await service.list(user_id,params)
+    total_page = (
+        total+params.page_size - 1
+    )// params.page_size
+    return {
+        "code": 200,
+        "message": "获取笔记列表成功",
+        "data": {
+            "notes":result,
+            "total":total,
+            "page":params.page,
+            "page_size":params.page_size,
+            "total_pages":total_page
+        }
+    }
+
+@note_router.get("/search",response_model=ApiResponse[SearchResponse])
 async def search_notes(
         q: str = Query(...,min_length=1,description="搜索标题或正文"),
-        db:AsyncSession = Depends(get_db),
+        service: NoteService = Depends(get_note_service),
         user_id : int = Depends(get_current_user_id)
 ):
-    patten = f"%{q}%"
-    base = select(Note).where(
-        Note.user_id == user_id,
-        or_(
-            Note.title.like(patten),
-            Note.content.like(patten)
-        )
-    )
 
-    total = await db.scalar(select(func.count()).select_from(base.subquery()))
-
-    result = await db.scalars(
-        base.order_by(
-            Note.updated_at.desc()
-        )
-    )
-
+    notes,total = await service.search(user_id,q)
     return {
-        "notes": result,
-        "total":total or 0,
+        "code": 200,
+        "message": "获取笔记列表成功",
+        "data": {
+            "notes":notes,
+            "total":total,
+        }
     }
 
 @note_router.delete("/batch")
@@ -134,38 +134,38 @@ async def batch_pin_notes(
         ),
     }
 
-@note_router.get("/stats")
+@note_router.get("/stats",response_model=ApiResponse[NoteStatsData])
 async def get_note_stats(
         user_id : int = Depends(get_current_user_id),
-        db : AsyncSession = Depends(get_db)
+        service: NoteService = Depends(get_note_service),
 ):
-    result = await db.execute(
-        select(Note.category,func.count(Note.id).label("count"))
-        .where(
-            Note.user_id == user_id,
-            Note.category.is_not(None),
-        )
-        .group_by(Note.category)
-        .order_by(func.count(Note.id).desc())
-    )
-
-    categorys = [
-        {
-            "category":category,
-            "count":count,
-        }
-        for category,count in result.all()
-    ]
-
-    total = await db.scalar(select(func.count(Note.id)).where(Note.user_id == user_id))
-
-    uncategory = await db.scalar(select(func.count(Note.id)).where(Note.category.is_(None)))
-
+    stats = await service.get_stats(user_id)
     return {
-        "total":total or 0,
-        "categories" : categorys,
-        "uncategorized" :  uncategory or 0,
+        "code": 200,
+        "message": "获取笔记统计成功",
+        "data": stats,
     }
+
+
+async def _get_owned_note(note_id: int ,user_id:int,db:AsyncSession = Depends(get_db)):
+    note = await db.scalar(select(Note).where(Note.id == note_id,Note.user_id == user_id))
+    if not note:
+        raise NoteNotFoundError
+
+    return note
+
+
+
+@note_router.patch("/batch/category")
+async def BatchCategoryRequest(req:BatchCategoryRequest,service:NoteService = Depends(get_note_service),user_id:int = Depends(get_current_user_id)):
+
+    count = await service.batch_update_category(req.ids,user_id,req.category)
+    return {
+        "updated_count":count,
+        "category":req.category,
+        "message":f"成功修改{count}篇笔记"
+    }
+
 
 
 @note_router.get("/batch/export")
@@ -258,60 +258,62 @@ async def batch_export_notes(
         },
     )
 
+@note_router.get("/{note_id}", response_model=ApiResponse[NoteResponse])
+async def get_note(note_id: int, user_id: int = Depends(get_current_user_id), service: NoteService = Depends(get_note_service),):
+        note =  await service.get_owned(note_id,user_id)
+        return {
+            "code": 200,
+            "message": "获取笔记详情成功",
+            "data": note,
+        }
 
-
-
-
-
-
-
-
-async def _get_owned_note(note_id: int, user_id: int, db: AsyncSession) -> Note:
-    note = await db.scalar(select(Note).where(Note.id == note_id, Note.user_id == user_id))
-    if note is None:
-        raise HTTPException(status_code=404, detail="笔记不存在")
-    return note
-
-
-@note_router.get("/{note_id}", response_model=NoteResponse)
-async def get_note(note_id: int, user_id: int = Depends(get_current_user_id), db: AsyncSession = Depends(get_db)):
-    return await _get_owned_note(note_id, user_id, db)
-
-
-@note_router.patch("/{note_id}", response_model=NoteResponse)
+@note_router.put("/{note_id}", response_model=ApiResponse[NoteResponse])
 async def update_note(
     note_id: int,
     payload: NoteUpdate,
     user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    service: NoteService = Depends(get_note_service),
 ):
-    note = await _get_owned_note(note_id, user_id, db)
-    for field, value in payload.model_dump(exclude_unset=True).items():
-        setattr(note, field, value)
-    await db.commit()
-    await db.refresh(note)
-    return note
+    note = await service.update(
+        note_id=note_id,
+        user_id=user_id,
+        payload=payload,
+    )
+
+    return {
+        "code":200,
+        "message":"笔记更新成功",
+        "data":note,
+    }
+
 
 
 @note_router.delete("/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_note(note_id: int, user_id: int = Depends(get_current_user_id), db: AsyncSession = Depends(get_db)):
-    note = await _get_owned_note(note_id, user_id, db)
-    await db.delete(note)
-    await db.commit()
+async def delete_note(note_id: int, service:NoteService = Depends(get_note_service),user_id : int = Depends(get_current_user_id)):
+
+    await service.delete(
+        note_id=note_id,
+        user_id=user_id,
+    )
 
 
-@note_router.patch("/{note_id}/pin",response_model=NoteResponse)
+
+@note_router.put("/{note_id}/pin",response_model=ApiResponse[NoteResponse])
 async def note_pin(
         note_id : int,
         user_id : int = Depends(get_current_user_id),
-        db:AsyncSession = Depends(get_db),
+        service: NoteService = Depends(get_note_service),
 ):
-    note = await _get_owned_note(note_id,user_id,db)
-    note.is_pinned = not note.is_pinned
-    await db.commit()
-    await db.refresh(note)
-    return note
+    note =  await service.toggle_pin(
+        note_id=note_id,
+        user_id=user_id,
+    )
 
+    return {
+        "code" : 200,
+        "message":"笔记更新成功",
+        "data":note
+    }
 
 
 @note_router.get("/{note_id}/export")
@@ -321,6 +323,7 @@ async def export_note(
         db : AsyncSession = Depends(get_db)
 ):
     note = await _get_owned_note(note_id,user_id,db)
+
     lines = [
         "--------",
         f"title : {note.title}"
@@ -359,3 +362,6 @@ async def export_note(
             )
         }
     )
+
+
+
