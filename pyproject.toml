@@ -17,6 +17,7 @@ dependencies = [
     "pytest-asyncio>=1.4.0",
     "aiosqlite>=0.22.1",
     "httpx>=0.28.1",
+    "langchain-openai>=1.6.0",
 ]
 
 [[tool.uv.index]]

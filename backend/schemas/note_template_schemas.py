@@ -82,3 +82,16 @@ class NoteTemplateResponse(BaseModel):
     model_config = {
         "from_attributes": True,
     }
+
+
+class NoteTemplate(BaseModel):
+    id: str
+    user_id: int
+    name: str
+    icon: str
+    category: str
+    title: str
+    content: str
+    tags: list[str]
+    is_default: bool
+    sort_order: int
