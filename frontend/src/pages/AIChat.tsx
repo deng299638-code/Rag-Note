@@ -64,12 +64,8 @@ export default function AIChat() {
     if (sessionId) {
       setLoadingHistory(true)
       sessionsApi.get(sessionId).then((res) => {
-        const data = res.data as { history?: [string, string][] } | undefined
-        if (data?.history) {
-          setMessages(data.history.flatMap(([query, response]) => [
-            { role: 'user', content: query },
-            { role: 'assistant', content: response },
-          ]))
+        if (res.data?.messages) {
+          setMessages(res.data.messages.map(({ role, content }) => ({ role, content })))
         }
       }).catch(() => {}).finally(() => setLoadingHistory(false))
     }

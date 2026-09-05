@@ -1,12 +1,18 @@
+import asyncio
+import logging
 from typing import List
+
+from langchain_core.documents import Document
 from sqlalchemy import func, or_, select,update
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends
 from db.db_config import get_db
 from exceptions.note_exceptions import NoteNotFoundError
 from models.note import Note
+from rag.note_vector_store import get_note_vector_store
 from schemas.note_schemas import NoteCreate, NoteUpdate, NoteQueryParams
 
+logger = logging.getLogger(__name__)
 
 class NoteService:
     def __init__(self, db: AsyncSession):
@@ -25,6 +31,11 @@ class NoteService:
         self.db.add(note)
         await self.db.commit()
         await self.db.refresh(note)
+
+        try:
+            await self._upsert_note_vecto(note)
+        except Exception:
+            logger.exception("笔记向量写入失败，note_id=%s", note.id)
 
         return note
 
@@ -122,6 +133,13 @@ class NoteService:
         await self.db.commit()
         await self.db.refresh(note)
 
+        if "content" in payload or "title" in payload:
+            try:
+                await self._upsert_note_vecto(note)
+            except Exception:
+                logger.exception("笔记向量更新失败，note_id=%s", note.id)
+
+
         return note
 
     async def delete(
@@ -133,6 +151,11 @@ class NoteService:
 
         await self.db.delete(note)
         await self.db.commit()
+
+        try:
+            await self._delete_note_vector(note_id)
+        except Exception:
+            logger.exception("笔记向量删除失败，note_id=%s", note_id)
 
     async def toggle_pin(
         self,
@@ -180,8 +203,6 @@ class NoteService:
             }
             for category, count in category_result.all()
         ]
-        print( categories)
-        print("===user_id:", user_id)
 
         total = await self.db.scalar(
             select(func.count(Note.id)).where(
@@ -201,6 +222,49 @@ class NoteService:
             "categories": categories,
             "uncategorized": uncategorized or 0,
         }
+
+    async def _upsert_note_vecto(self,note:Note):
+        document = Document(
+            page_content= note.content ,
+            metadata = {
+                "user_id" : note.user_id,
+                "note_id" : note.id,
+                "doc_type" : "note",
+                "title" : note.title,
+            }
+        )
+
+        store = get_note_vector_store().store
+
+        collection_exists = await asyncio.to_thread(
+            store.client.has_collection,
+            store.collection_name,
+        )
+        if collection_exists:
+            await asyncio.to_thread(
+                store.delete,
+                where = {"note_id":note.id}
+            )
+
+        await asyncio.to_thread(
+            store.add_documents,
+            [document],
+            ids = [str(note.id)]
+        )
+
+
+    async def _delete_note_vector(self,note_id:int):
+        store = get_note_vector_store().store
+
+        collection_exists = await asyncio.to_thread(
+            store.client.has_collection,
+            store.collection_name,
+        )
+        if collection_exists:
+            await asyncio.to_thread(
+                store.delete,
+                where = {"note_id":note_id}
+            )
 
 def get_note_service(
     db: AsyncSession = Depends(get_db),

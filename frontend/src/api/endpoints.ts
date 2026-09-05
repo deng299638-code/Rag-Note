@@ -15,10 +15,9 @@ export const endpoints = {
   ragQuery: '/chat/rag/query',
 
   // Sessions
-  getSession: (id: string) => `/chat/session/${id}`,
-  deleteSession: (id: string) => `/chat/session/${id}`,
-  getAllSessions: '/chat/sessions',
-  getUserSessions: (userId: string) => `/chat/sessions/${userId}`,
+  getSessionMessages: (id: string) => `/chat/sessions/${id}/messages`,
+  deleteSession: (id: string) => `/chat/sessions/${id}`,
+  getSessions: '/chat/sessions',
 
   // Knowledge Base
   uploadSingleFile: '/knowledge/add/single',

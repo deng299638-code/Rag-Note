@@ -5,7 +5,6 @@ import { toast } from 'sonner'
 import { Plus, MessageSquare, Trash2 } from 'lucide-react'
 import { sessionsApi } from '../api/sessions'
 import { useSessionStore } from '../stores/useSessionStore'
-import { useUserStore } from '../stores/useUserStore'
 import type { ChatSession } from '../types/api'
 import EmptyState from '../components/common/EmptyState'
 import ConfirmDialog from '../components/common/ConfirmDialog'
@@ -13,15 +12,13 @@ import ConfirmDialog from '../components/common/ConfirmDialog'
 export default function Sessions() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const userId = useUserStore((s) => s.userInfo?.uuid || s.userInfo?.user_id || s.userInfo?.id || '')
   const { sessions, setSessions, removeSession, setLoading, loading } = useSessionStore()
   const [deleteTarget, setDeleteTarget] = useState<ChatSession | null>(null)
 
   const loadSessions = async () => {
-    if (!userId) return
     setLoading(true)
     try {
-      const res = await sessionsApi.list(userId as string)
+      const res = await sessionsApi.list()
       const sessionList = (res.data as { sessions: ChatSession[] } | undefined)?.sessions || []
       setSessions(sessionList as ChatSession[])
     } catch {
@@ -31,7 +28,7 @@ export default function Sessions() {
     }
   }
 
-  useEffect(() => { loadSessions() }, [userId])
+  useEffect(() => { loadSessions() }, [])
 
   const handleDelete = async () => {
     if (!deleteTarget) return

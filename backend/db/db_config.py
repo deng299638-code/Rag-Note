@@ -42,7 +42,7 @@ async def get_db():
             await db.close()
 
 async def create_tables():
-    from models import note,user,note_template# noqa: F401
+    from models import chat, note, user, note_template  # noqa: F401
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
 
@@ -78,4 +78,3 @@ async def test_mysql():
                 status_code= 400,
                 detail= e,
             )
-

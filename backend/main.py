@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
-from core.exception_handlers import note_not_found_handler, note_template_not_found_handler
+from core.exception_handlers import note_not_found_handler, note_template_not_found_handler, session_not_found_handler
+from exceptions.chat_exception import ChatSessionNotFoundError
 from exceptions.note_exceptions import NoteNotFoundError
 from exceptions.note_template_exceptions import TemplateNotFoundError
 from router.agent import agent_router
@@ -26,3 +27,4 @@ app.include_router(note_template_router)
 app.include_router(agent_router)
 app.add_exception_handler(NoteNotFoundError,note_not_found_handler)#出现1处理2
 app.add_exception_handler(TemplateNotFoundError,note_template_not_found_handler)
+app.add_exception_handler(ChatSessionNotFoundError,session_not_found_handler)

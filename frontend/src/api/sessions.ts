@@ -1,24 +1,23 @@
 import client from './client'
 import { endpoints } from './endpoints'
-import type { ApiResponse, ChatSession } from '../types/api'
+import type { ApiResponse, ChatMessage, ChatSession } from '../types/api'
 
 interface SessionsData {
   sessions: ChatSession[]
 }
 
-interface SessionDetailData {
-  session_id: string
-  history: [string, string][]
+interface SessionMessagesData {
+  messages: Pick<ChatMessage, 'id' | 'role' | 'content' | 'created_at'>[]
 }
 
 export const sessionsApi = {
-  list: async (userId: string) => {
-    const res = await client.get<ApiResponse<SessionsData>>(endpoints.getUserSessions(userId))
+  list: async () => {
+    const res = await client.get<ApiResponse<SessionsData>>(endpoints.getSessions)
     return res.data
   },
 
   get: async (id: string) => {
-    const res = await client.get<ApiResponse<SessionDetailData>>(endpoints.getSession(id))
+    const res = await client.get<ApiResponse<SessionMessagesData>>(endpoints.getSessionMessages(id))
     return res.data
   },
 
