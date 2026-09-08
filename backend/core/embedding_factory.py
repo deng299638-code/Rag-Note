@@ -1,6 +1,11 @@
 import os
+from pathlib import Path
+
 from langchain_openai import OpenAIEmbeddings
 from pydantic import SecretStr
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 def create_embedding_model():
 

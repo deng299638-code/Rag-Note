@@ -91,7 +91,7 @@ class  ChatRepository:
             ).limit(limit)
         )
 
-        return messages.all()
+        return list(reversed(messages.all()))
 
 
     async def touch_session(self,session_id : str):

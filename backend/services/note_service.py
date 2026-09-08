@@ -133,7 +133,7 @@ class NoteService:
         await self.db.commit()
         await self.db.refresh(note)
 
-        if "content" in payload or "title" in payload:
+        if "content" in update_data or "title" in update_data:
             try:
                 await self._upsert_note_vecto(note)
             except Exception:
@@ -253,7 +253,7 @@ class NoteService:
         )
 
 
-    async def _delete_note_vector(self,note_id:int):
+    async def _delete_note_vector(self,note_id:int,user_id : int):
         store = get_note_vector_store().store
 
         collection_exists = await asyncio.to_thread(
@@ -263,7 +263,9 @@ class NoteService:
         if collection_exists:
             await asyncio.to_thread(
                 store.delete,
-                where = {"note_id":note_id}
+                where = {
+                    "note_id":note_id,
+                }
             )
 
 def get_note_service(

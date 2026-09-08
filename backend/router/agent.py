@@ -35,7 +35,7 @@ async def query_agent_stream(
 
     return StreamingResponse(
         service.stream_response(
-            session_id, messages
+            session_id, messages,user_id
         ),
         media_type="text/event-stream",
         headers={

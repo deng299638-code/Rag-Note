@@ -8,7 +8,7 @@ from rag.note_vector_store import get_note_vector_store
 
 TOP_K = 5
 
-class NoteHybridRetrieve:
+class NoteHybridRetriever:
     async def _get_bm25_retriever(self,user_id:int) ->  BM25Retriever | None:
 
         store = get_note_vector_store().store
@@ -19,7 +19,7 @@ class NoteHybridRetrieve:
             include=["documents", "metadatas"],
             where = {
                 "user_id" : user_id,
-                "doc_ytpe" : "note"
+                "doc_type" : "note"
             },
         )
 
@@ -42,14 +42,14 @@ class NoteHybridRetrieve:
     async def get_retriever(self,query,user_id):
         store = get_note_vector_store().store
 
+        expr = f'user_id == "{user_id}" and doc_type == "note"'
+
+        #异步不支持filter字典
         vector_retriever = store.as_retriever(
-            serch_type = "similarity",
+            search_type = "similarity",
             search_kwargs = {
                 "k" : TOP_K,
-                "filter" : {
-                    "user_id" : user_id,
-                    "doc_type" : "note"
-                }
+                "expr" : expr,
             }
         )
 

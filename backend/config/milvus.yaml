@@ -1,0 +1,12 @@
+chunk_size: 1000
+chunk_overlap: 20
+separators:
+  - "\n\n"
+  - "\n"
+  - "。"
+  - "！"
+  - "？"
+  - "!"
+  - "?"
+  - " "
+  - ""

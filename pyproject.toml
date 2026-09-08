@@ -23,6 +23,8 @@ dependencies = [
     "rank-bm25>=0.2.2",
     "langchain-core>=0.3.0",
     "langchain-community>=0.4.2",
+    "torch>=2.14.0",
+    "sentence-transformers>=6.0.1",
 ]
 
 [[tool.uv.index]]

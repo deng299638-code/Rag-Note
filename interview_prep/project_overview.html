@@ -1,0 +1,104 @@
+<html style="margin:0;padding:0;">
+<div style="background-color:transparent;box-sizing:border-box;font-family:'PingFang SC','Microsoft YaHei',Arial,sans-serif;color:#1A1B1C;line-height:1.5;">
+  <div style="--accent:#5B7FD4;font-size:15px;font-weight:600;margin:4px 0 4px;">AI 智能笔记 · 整体架构与问答流程</div>
+  <div style="font-size:12px;color:#6B7280;margin-bottom:12px;">依据项目源码整理 · 技术栈:React+TS / FastAPI / MySQL / Milvus / LangChain / BGE-Reranker</div>
+
+  <!-- 一、系统架构 -->
+  <div style="font-size:13px;font-weight:600;color:#5B7FD4;margin:8px 0 6px;">① 系统架构(三层)</div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+
+    <div style="display:flex;align-items:stretch;gap:8px;">
+      <div style="flex:0 0 84px;min-width:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(91,127,212,0.18),rgba(91,127,212,0.10));border-radius:10px;font-size:12px;font-weight:600;color:#3E5AA6;padding:6px;">前端层</div>
+      <div style="flex:1;min-width:0;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:8px 12px;font-size:12px;color:#1A1B1C;">
+        React 18 + TypeScript + Vite · Tiptap 富文本 · Zustand · i18n 双语
+        <div style="color:#6B7280;margin-top:2px;">页面:登录注册 / 笔记列表·编辑器 / AI 对话 / 会话管理 / 知识库 / 每日回顾 / 设置</div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:stretch;gap:8px;">
+      <div style="flex:0 0 84px;min-width:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(91,127,212,0.28),rgba(91,127,212,0.16));border-radius:10px;font-size:12px;font-weight:600;color:#3E5AA6;padding:6px;">后端层</div>
+      <div style="flex:1;min-width:0;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:8px 12px;font-size:12px;color:#1A1B1C;">
+        FastAPI + SQLAlchemy(async) + AIOMySQL
+        <div style="color:#6B7280;margin-top:2px;">Router(agent/note/template/user/health) → Service(Agent/Note/Chat/Template) → Repository → Model</div>
+        <div style="color:#6B7280;">RAG 模块:NoteRagService → 混合检索(向量+BM25) → 重排(CrossEncoder)</div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:stretch;gap:8px;">
+      <div style="flex:0 0 84px;min-width:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(91,127,212,0.12),rgba(91,127,212,0.06));border-radius:10px;font-size:12px;font-weight:600;color:#3E5AA6;padding:6px;">数据/外部</div>
+      <div style="flex:1;min-width:0;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:8px 12px;font-size:12px;color:#1A1B1C;">
+        <span style="font-weight:600;">MySQL</span> 用户·笔记·会话·模板 <span style="color:#6B7280;">|</span>
+        <span style="font-weight:600;">Milvus</span> 笔记向量库(按 user_id 隔离) <span style="color:#6B7280;">|</span>
+        <span style="font-weight:600;">LLM API</span> OpenAI 兼容(Qwen) <span style="color:#6B7280;">|</span>
+        <span style="font-weight:600;">BGE-Reranker</span> 本地模型 <span style="color:#6B7280;">|</span> Embedding API
+      </div>
+    </div>
+  </div>
+
+  <!-- 二、问答流程 -->
+  <div style="font-size:13px;font-weight:600;color:#5B7FD4;margin:16px 0 6px;">② AI 问答端到端流程(核心链路)</div>
+  <div style="display:flex;flex-direction:column;gap:0;">
+
+    <div style="display:flex;gap:8px;align-items:flex-start;">
+      <div style="flex:0 0 22px;height:22px;border-radius:50%;background:#5B7FD4;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;">1</div>
+      <div style="flex:1;min-width:0;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:7px 12px;font-size:12px;margin-bottom:6px;">
+        <span style="font-weight:600;">前端发起</span> · AIChat 页 POST <code style="background:rgba(0,0,0,0.05);padding:0 4px;border-radius:4px;">/chat/agent/query/stream</code>,携带 JWT,走 SSE 流式
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:flex-start;">
+      <div style="flex:0 0 22px;height:22px;border-radius:50%;background:#5B7FD4;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;">2</div>
+      <div style="flex:1;min-width:0;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:7px 12px;font-size:12px;margin-bottom:6px;">
+        <span style="font-weight:600;">鉴权与会话</span> · JWT 解析 user_id;有 session_id 则复用,否则新建会话并生成标题;用户消息落库(MySQL chat_messages)
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:flex-start;">
+      <div style="flex:0 0 22px;height:22px;border-radius:50%;background:#5B7FD4;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;">3</div>
+      <div style="flex:1;min-width:0;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:7px 12px;font-size:12px;margin-bottom:6px;">
+        <span style="font-weight:600;">RAG 召回</span> · Ensemble 混合检索:<span style="background:rgba(91,127,212,0.12);border-radius:4px;padding:0 4px;">Milvus 语义向量</span> + <span style="background:rgba(91,127,212,0.12);border-radius:4px;padding:0 4px;">BM25 关键词</span>,按问题长度/词密度动态调权,按 user_id 过滤 → top5
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:flex-start;">
+      <div style="flex:0 0 22px;height:22px;border-radius:50%;background:#5B7FD4;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;">4</div>
+      <div style="flex:1;min-width:0;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:7px 12px;font-size:12px;margin-bottom:6px;">
+        <span style="font-weight:600;">重排精筛</span> · BGE-Reranker-v2-m3 交叉编码器(query×文档打分)重排,取 top3 作为上下文
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:flex-start;">
+      <div style="flex:0 0 22px;height:22px;border-radius:50%;background:#5B7FD4;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;">5</div>
+      <div style="flex:1;min-width:0;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:7px 12px;font-size:12px;margin-bottom:6px;">
+        <span style="font-weight:600;">组装 Prompt</span> · System(助手设定+检索到的笔记)+ 历史消息 + 当前问题,构建 LangChain Tool-Calling Agent(工具:笔记统计)
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:flex-start;">
+      <div style="flex:0 0 22px;height:22px;border-radius:50%;background:#5B7FD4;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;">6</div>
+      <div style="flex:1;min-width:0;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:7px 12px;font-size:12px;margin-bottom:6px;">
+        <span style="font-weight:600;">流式生成</span> · AgentExecutor.astream 调 LLM;可多轮工具调用(max 3 轮);AI 回答落库
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:flex-start;">
+      <div style="flex:0 0 22px;height:22px;border-radius:50%;background:#5B7FD4;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;">7</div>
+      <div style="flex:1;min-width:0;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:7px 12px;font-size:12px;margin-bottom:6px;">
+        <span style="font-weight:600;">SSE 回传</span> · thinking(分析中/调工具)→ response(流式文本) → done;前端 useSSE 解析,Markdown 增量渲染,中断可 AbortController 取消
+      </div>
+    </div>
+  </div>
+
+  <!-- 三、数据双写说明 -->
+  <div style="font-size:13px;font-weight:600;color:#5B7FD4;margin:14px 0 6px;">③ 笔记数据双写一致性</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;">
+    <div style="flex:1 1 220px;min-width:0;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:8px 12px;font-size:12px;">
+      <span style="font-weight:600;">写</span> 笔记增/改/删 → MySQL 事务提交 → <span style="background:rgba(91,127,212,0.12);border-radius:4px;padding:0 4px;">同步 upsert/delete 向量</span>到 Milvus(失败仅记日志,不阻塞主流程)
+    </div>
+    <div style="flex:1 1 220px;min-width:0;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);border-radius:10px;padding:8px 12px;font-size:12px;">
+      <span style="font-weight:600;">读</span> 列表/搜索走 MySQL(LIKE 查询);AI 问答走 Milvus 向量 + BM25,数据按 user_id 严格隔离
+    </div>
+  </div>
+
+</div>
+</html>
