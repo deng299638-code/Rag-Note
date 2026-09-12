@@ -25,6 +25,8 @@ dependencies = [
     "langchain-community>=0.4.2",
     "torch>=2.14.0",
     "sentence-transformers>=6.0.1",
+    "optree>=0.20.0",
+    "python-multipart>=0.0.32",
 ]
 
 [[tool.uv.index]]

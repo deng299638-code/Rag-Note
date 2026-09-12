@@ -1,3 +1,4 @@
+from rag.knowledge_rag_service import KnowledgeRagService
 from rag.note_hybrid_retriever import NoteHybridRetriever
 from rag.reorder_service import ReorderService
 
@@ -7,7 +8,6 @@ class NoteRagService:
     def __init__(self):
         self.retriever = NoteHybridRetriever()
         self.reorder_service = ReorderService()
-
 
     async def retrieve_documents(self,query : str , user_id : int):
         retriever = await self.retriever.get_retriever(query,user_id)

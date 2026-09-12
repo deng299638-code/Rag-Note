@@ -153,7 +153,7 @@ class NoteService:
         await self.db.commit()
 
         try:
-            await self._delete_note_vector(note_id)
+            await self._delete_note_vector(note_id,user_id)
         except Exception:
             logger.exception("笔记向量删除失败，note_id=%s", note_id)
 
@@ -243,7 +243,11 @@ class NoteService:
         if collection_exists:
             await asyncio.to_thread(
                 store.delete,
-                where = {"note_id":note.id}
+                where = {
+                    "note_id":note.id,
+                    "user_id": note.user_id,
+                    "doc_type": "note"
+                }
             )
 
         await asyncio.to_thread(
@@ -265,6 +269,8 @@ class NoteService:
                 store.delete,
                 where = {
                     "note_id":note_id,
+                    "user_id":user_id,
+                    "doc_type":"note"
                 }
             )
 

@@ -42,7 +42,7 @@ class NoteHybridRetriever:
     async def get_retriever(self,query,user_id):
         store = get_note_vector_store().store
 
-        expr = f'user_id == "{user_id}" and doc_type == "note"'
+        expr = f'user_id == {user_id} and doc_type == "note"'
 
         #异步不支持filter字典
         vector_retriever = store.as_retriever(
@@ -81,6 +81,9 @@ class NoteHybridRetriever:
         if query_length > 50:
             vector_weight = 0.7
             bm25_weight = 0.3
+        elif query_length >= 25:
+            vector_weight = 0.6
+            bm25_weight = 0.4
         elif query_length < 20:
             vector_weight = 0.3
             bm25_weight = 0.7

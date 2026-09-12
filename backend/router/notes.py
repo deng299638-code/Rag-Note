@@ -98,6 +98,7 @@ async def batch_detete_notes(
         }
     for i in notes:
         await db.delete(i)
+    await db.commit()
 
     return {
         "deleted_count": len(notes),
@@ -219,7 +220,7 @@ async def batch_export_notes(
                 "---\n"
                 f"title:{note.title}\n" 
                 f"catrgory:{note.category or ''}\n"
-                f"{tags}"
+                f"{tags if tags else ""}"
                 f"create_time : {note.created_at}\n"
                 f"update_time : {note.updated_at}\n"
                 "---\n\n"

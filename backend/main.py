@@ -5,6 +5,7 @@ from exceptions.chat_exception import ChatSessionNotFoundError
 from exceptions.note_exceptions import NoteNotFoundError
 from exceptions.note_template_exceptions import TemplateNotFoundError
 from router.agent import agent_router
+from router.knowledge import Knowledge_Router
 from router.note_template import note_template_router
 from router.user import user_router
 from router.health import health_router
@@ -25,6 +26,7 @@ app.include_router(health_router)
 app.include_router(note_router)
 app.include_router(note_template_router)
 app.include_router(agent_router)
+app.include_router(Knowledge_Router)
 app.add_exception_handler(NoteNotFoundError,note_not_found_handler)#出现1处理2
 app.add_exception_handler(TemplateNotFoundError,note_template_not_found_handler)
 app.add_exception_handler(ChatSessionNotFoundError,session_not_found_handler)
