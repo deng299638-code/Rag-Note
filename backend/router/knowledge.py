@@ -1,11 +1,13 @@
+import mimetypes
 from typing import Annotated
-
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Query, Path
 from starlette.responses import StreamingResponse
 
 from schemas.common_schemas import ApiResponse
 from services.knowledge_service import get_knowledge_service, KnowledgeService
 from utils.JWT import get_current_user_id
+from utils.image_extractor import get_image_file_path
 
 Knowledge_Router = APIRouter(prefix="/knowledge",tags=["knowledge"],)
 
@@ -100,3 +102,26 @@ async def clean_knowledge(user_id:int = Depends(get_current_user_id),service:Kno
             "deleted_count": deleted_count,
         },
     }
+
+@Knowledge_Router.get("image/{md5}/{filename}")
+async def get_knowledge_image(md5:str,filename:str,user_id: int = Depends(get_current_user_id)):
+    #防止用户传入图片路径
+    if Path(filename).name != filename:
+        raise HTTPException(
+            status_code=400,
+            detail="非法图片文件名",
+        )
+
+    image_path = get_image_file_path(str(user_id), md5, filename)
+    if not image_path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="图片不存在",
+        )
+
+    media_type,_ = mimetypes.guess_type(str(image_path))#根据文件名后缀猜类型
+
+    return FileResponse(
+        path=image_path,
+        media_type=media_type or "application/octet-stream",
+    )

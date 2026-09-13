@@ -27,6 +27,8 @@ dependencies = [
     "sentence-transformers>=6.0.1",
     "optree>=0.20.0",
     "python-multipart>=0.0.32",
+    "pymupdf>=1.28.2",
+    "rapidocr-onnxruntime>=1.4.4",
 ]
 
 [[tool.uv.index]]
@@ -37,3 +39,4 @@ default = true
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 asyncio_default_test_loop_scope = "function"
+addopts = "--basetemp=.pytest-tmp"

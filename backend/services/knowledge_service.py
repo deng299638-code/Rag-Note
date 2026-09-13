@@ -9,6 +9,7 @@ from fastapi import UploadFile, Depends
 from db.db_config import get_db
 from rag.document_processor import DocumentProcessor
 from rag.knowledge_vector_store import get_knowledge_Vector_Store
+from utils.image_extractor import delete_user_all_images, delete_image_directory
 
 ALLOWED_SUFFIXES = {".txt",".pdf",".md",".pptx",".docx",}
 
@@ -191,6 +192,11 @@ class KnowledgeService:
             metadata = result["metadatas"][index]
             if metadata.get("original_filename") != filename:
                 continue
+            image_paths = metadata.get("image_paths",[])
+            images = [
+                f"/knowledge/image/{metadata.get('md5')}/{image_name}"
+                for image_name in image_paths
+            ]
             chunks.append({
                 "chunk_id": result["ids"][index],
                 "index": metadata.get(
@@ -199,7 +205,7 @@ class KnowledgeService:
                 ),
                 "content": document,
                 "page": metadata.get("page", 0),
-                "images": [],
+                "images": images,
             })
 
         if not chunks:
@@ -221,20 +227,32 @@ class KnowledgeService:
     async def delete_by_filename(self,filename:str,user_id:int):
         store = self._store()
         result = await self._get_user_documents(user_id)
-        ids = [
-            result["ids"][index]
-            for index,metadata in enumerate(result.get("metadatas",[]))
-            if metadata.get("original_filename") == filename
-        ]
-
-        if ids:
-            await asyncio.to_thread(
-                store.delete,
-                ids = ids,
-
+        matched_md5s = set()
+        matched_ids = []
+        for index,metadata in enumerate(result["metadatas"]):
+            if metadata.get("original_filename") != filename:
+                continue
+            matched_ids.append(result["ids"]["index"])
+            md5 = (
+                metadata.get("file_hash")
+                or metadata.get("md5")
             )
 
-        return bool(ids)
+            if md5:
+                matched_md5s.add(md5)
+
+        if not matched_ids:
+            return None
+
+        await asyncio.to_thread(
+            store.delete,
+            ids = matched_ids,
+
+        )
+
+        for md5 in matched_md5s:
+            delete_image_directory(user_id,md5)
+        return True
 
     async def delete_user_vectors(self,user_id:int):
         store = self._store()
@@ -249,6 +267,8 @@ class KnowledgeService:
             store.delete,
             ids=ids,
         )
+
+        delete_user_all_images(str(user_id))
 
         return len(ids)
 

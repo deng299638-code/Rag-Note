@@ -20,14 +20,14 @@ class DocumentProcessor:
     async def split_documents(self,documents: list[Document]):
         return await self.splitter.split_documents(documents)
 
-    def get_file_document_sync(self,file_path:str):
+    def get_file_document_sync(self,file_path:str,file_hash: str | None =None,user_id: str | None =None):
         file_path = file_path.lower()
 
         if file_path.endswith(".txt"):
             return txt_loader_sync(file_path)
 
         if file_path.endswith(".pdf"):
-            return pdf_loader_sync(file_path)
+            return pdf_loader_sync(file_path, file_hash, user_id)
 
         if file_path.endswith(".md"):
             return markdown_loader_sync(file_path)
@@ -40,14 +40,14 @@ class DocumentProcessor:
 
         return []
 
-    async def get_file_document(self,file_path:str):
+    async def get_file_document(self,file_path:str,file_hash: str | None =None,user_id: str | None =None):
         file_path = file_path.lower()
 
         if file_path.endswith(".txt"):
             return await txt_loader(file_path)
 
         if file_path.endswith(".pdf"):
-            return await pdf_loader(file_path)
+            return await pdf_loader(file_path, file_hash, user_id)
 
         if file_path.endswith(".md"):
             return await markdown_loader(file_path)
@@ -83,7 +83,7 @@ class DocumentProcessor:
 
 
     def process_file_sync(self,file_path: str,document_id: str,user_id : str | None = None,file_hash : str | None = None):
-        documents = self.get_file_document_sync(file_path)
+        documents = self.get_file_document_sync(file_path,file_hash, user_id)
 
         if not documents:
             return []
@@ -93,7 +93,7 @@ class DocumentProcessor:
         return self.enrich_chunk_metadata(chunks,file_path=file_path, user_id=user_id, file_hash=file_hash,document_id = document_id)
 
     async def process_file(self, file_path: str,document_id: str,user_id : str | None = None,file_hash : str | None = None):
-        documents = await self.get_file_document(file_path)
+        documents = await self.get_file_document(file_path,file_hash, user_id)
 
         if not documents:
             return []
