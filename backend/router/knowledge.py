@@ -1,9 +1,9 @@
 import mimetypes
 from typing import Annotated
 from fastapi.responses import FileResponse
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Query, Path
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Query
 from starlette.responses import StreamingResponse
-
+from pathlib import Path
 from schemas.common_schemas import ApiResponse
 from services.knowledge_service import get_knowledge_service, KnowledgeService
 from utils.JWT import get_current_user_id
@@ -103,7 +103,7 @@ async def clean_knowledge(user_id:int = Depends(get_current_user_id),service:Kno
         },
     }
 
-@Knowledge_Router.get("image/{md5}/{filename}")
+@Knowledge_Router.get("/image/{md5}/{filename}")
 async def get_knowledge_image(md5:str,filename:str,user_id: int = Depends(get_current_user_id)):
     #防止用户传入图片路径
     if Path(filename).name != filename:
@@ -125,3 +125,18 @@ async def get_knowledge_image(md5:str,filename:str,user_id: int = Depends(get_cu
         path=image_path,
         media_type=media_type or "application/octet-stream",
     )
+
+@Knowledge_Router.get("/add/multiple/{task_id}/progress",response_model=ApiResponse[dict],)
+async def get_multiple_upload_progress(task_id:str,user_id : int =Depends(get_current_user_id),service: KnowledgeService = Depends(get_knowledge_service),):
+    try:
+        progress = await service.get_upload_progress(user_id, task_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        )
+    return {
+        "code": 200,
+        "message": "获取上传进度成功",
+        "data": progress,
+    }

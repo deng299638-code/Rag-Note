@@ -2572,6 +2572,7 @@ dependencies = [
     { name = "python-multipart" },
     { name = "rank-bm25" },
     { name = "rapidocr-onnxruntime" },
+    { name = "redis" },
     { name = "sentence-transformers" },
     { name = "sqlalchemy" },
     { name = "torch" },
@@ -2602,6 +2603,7 @@ requires-dist = [
     { name = "python-multipart", specifier = ">=0.0.32" },
     { name = "rank-bm25", specifier = ">=0.2.2" },
     { name = "rapidocr-onnxruntime", specifier = ">=1.4.4" },
+    { name = "redis", specifier = ">=8.1.0" },
     { name = "sentence-transformers", specifier = ">=6.0.1" },
     { name = "sqlalchemy", specifier = ">=2.0.52" },
     { name = "torch", specifier = ">=2.14.0" },
@@ -2683,6 +2685,15 @@ dependencies = [
 ]
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/ba/12/1e5497183bdbe782dbb91bad1d0d2297dba4d2831b2652657f7517bfc6df/rapidocr_onnxruntime-1.4.4-py3-none-any.whl", hash = "sha256:971d7d5f223a7a808662229df1ef69893809d8457d834e6373d3854bc1782cbf" },
+]
+
+[[package]]
+name = "redis"
+version = "8.1.0"
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
+sdist = { url = "https://mirrors.aliyun.com/pypi/packages/a8/99/604f0b666d4c616d891cf77ebb9db6bb21601344c051aebf1b72b9ff915f/redis-8.1.0.tar.gz", hash = "sha256:6e1a19beef9225c83efd689c7e6b7da2d5215b1f42cd13b7fc3714d0a09c7b25" }
+wheels = [
+    { url = "https://mirrors.aliyun.com/pypi/packages/66/9d/c5731f6e3608663d4d3656fd8d3aecee8b509c3082818f5a13eae925baea/redis-8.1.0-py3-none-any.whl", hash = "sha256:a4fe1aac3d3b3cc791d4b3d5931c5a956045dc951ee74d1c913ee3ac4d2ee9fb" },
 ]
 
 [[package]]

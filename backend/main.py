@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from core.exception_handlers import note_not_found_handler, note_template_not_found_handler, session_not_found_handler
+from db.redis_client import init_redis, close_redis
 from exceptions.chat_exception import ChatSessionNotFoundError
 from exceptions.note_exceptions import NoteNotFoundError
 from exceptions.note_template_exceptions import TemplateNotFoundError
@@ -13,12 +14,19 @@ from router.notes import note_router
 from db.db_config import create_tables, create_admin
 from contextlib import asynccontextmanager
 
+from services.knowledge_service import cancel_upload_tasks
+
 
 @asynccontextmanager
 async def lifespan(app:FastAPI):
+    await init_redis()
     await create_tables()
     await create_admin()
-    yield
+    try:
+        yield
+    finally:
+        await cancel_upload_tasks()
+        await close_redis()
 
 app = FastAPI(lifespan= lifespan)
 app.include_router(user_router)

@@ -2,7 +2,6 @@ import os
 from fastapi import HTTPException
 
 from dotenv import load_dotenv
-from fastapi import Depends
 from sqlalchemy import text, select
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
