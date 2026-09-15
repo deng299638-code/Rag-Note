@@ -1,6 +1,9 @@
+import pytest
+from fastapi import HTTPException
 from fastapi.routing import APIRoute, APIRouter
 
 from main import app
+from router.knowledge import cancel_multiple_upload
 
 
 def route_methods(path: str):
@@ -40,3 +43,38 @@ def test_knowledge_upload_routes_exist():
     assert route_methods(
         "/knowledge/add/multiple/stream"
     ) == {"POST"}
+
+    assert route_methods(
+        "/knowledge/add/multiple/{task_id}"
+    ) == {"DELETE"}
+
+
+@pytest.mark.asyncio
+async def test_cancel_multiple_upload_cancels_task():
+    state = {"task_id": "task-1", "status": "cancelled"}
+
+    class Service:
+        async def cancel_upload(self, user_id, task_id):
+            assert (user_id, task_id) == (7, "task-1")
+            return state
+
+    response = await cancel_multiple_upload("task-1", 7, Service())
+
+    assert response == {
+        "code": 200,
+        "message": "上传任务已取消",
+        "data": state,
+    }
+
+
+@pytest.mark.asyncio
+async def test_cancel_multiple_upload_returns_404_for_missing_task():
+    class Service:
+        async def cancel_upload(self, user_id, task_id):
+            raise ValueError("上传任务不存在或已过期")
+
+    with pytest.raises(HTTPException) as exc_info:
+        await cancel_multiple_upload("missing", 7, Service())
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "上传任务不存在或已过期"

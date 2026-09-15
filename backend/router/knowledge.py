@@ -140,3 +140,18 @@ async def get_multiple_upload_progress(task_id:str,user_id : int =Depends(get_cu
         "message": "获取上传进度成功",
         "data": progress,
     }
+
+@Knowledge_Router.delete("/add/multiple/{task_id}",response_model=ApiResponse[dict])
+async def cancel_multiple_upload(task_id:str,user_id:int = Depends(get_current_user_id),service: KnowledgeService = Depends(get_knowledge_service)):
+    try:
+        state = await service.cancel_upload(user_id, task_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        )
+    return {
+        "code": 200,
+        "message": "上传任务已取消",
+        "data": state,
+    }

@@ -10,12 +10,22 @@ redis_client : Redis | None = None
 REDIS_URL = (f"redis://{os.getenv('REDIS_HOST')}:{os.getenv('REDIS_PORT')}/{os.getenv('REDIS_DB')}")
 async def init_redis():
     global redis_client
-    redis_client = Redis.from_url(
+    client = Redis.from_url(
         REDIS_URL,
         decode_responses=True,
+        socket_connect_timeout=3,
+        socket_timeout=3,
+        health_check_interval=30,
+        retry_on_timeout=True,#超时自动尝试
     )
+    try:
+        await client.ping()
+    except Exception:
+        await client.aclose()
+        raise
 
-    await redis_client.ping()
+    redis_client = client
+
 
 async def close_redis():
     global redis_client

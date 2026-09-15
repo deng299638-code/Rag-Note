@@ -23,15 +23,18 @@ class KnowledgeRagService:
         if not exists:
             return []
 
-        documents = await asyncio.to_thread(
-            store.similarity_search,
+        matches = await asyncio.to_thread(
+            store.similarity_search_with_score,
             query,
             k = 5,
             filter = {"user_id":user_id},
         )#list[document]
 
-        if not documents:
+        if not matches:
             return []
+
+        documents = [document for document,score in matches]
+        retrieval_scores = [float(score)for document, score in matches]
 
 
         candidates = [content.page_content for content in documents]
@@ -52,7 +55,8 @@ class KnowledgeRagService:
         ranked = await self.reorder_service.reorder_documents(
             query,
             candidates,
-            metadata
+            metadata,
+            retrieval_scores,
         )
 
         return ranked[:3]

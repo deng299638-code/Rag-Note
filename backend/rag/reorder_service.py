@@ -27,7 +27,7 @@ class ReorderService:
 
         return self.model
 
-    async def reorder_documents(self,query : str,documents : list[str], metadata : list[dict] | None = None):
+    async def reorder_documents(self,query : str,documents : list[str], metadata : list[dict] | None = None, retrieval_scores : list[float] | None = None):
 
         if not documents:
             return []
@@ -44,11 +44,15 @@ class ReorderService:
 
             item = {
                 "document" : document,
+                "rerank_score":float(score),
                 "similarity" : float(score)
             }
 
             if metadata:
                 item["metadata"] = metadata[index]
+
+            if retrieval_scores:
+                item["retrieval_score"] = retrieval_scores[index]
 
             result.append(item)
 

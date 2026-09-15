@@ -1,11 +1,14 @@
 import asyncio
 import hashlib
 import json
+import logging
 import os
 import shutil
 import tempfile
 from asyncio import tasks
 from pathlib import Path
+
+from redis import RedisError
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import UploadFile, Depends
 from uuid import uuid4
@@ -13,8 +16,9 @@ from db.redis_client import get_redis
 from db.db_config import get_db
 from rag.document_processor import DocumentProcessor
 from rag.knowledge_vector_store import get_knowledge_Vector_Store
+from utils.cache import cache_get_json, cache_set_json
 from utils.image_extractor import delete_user_all_images, delete_image_directory
-
+logger = logging.getLogger(__name__)
 ALLOWED_SUFFIXES = {".txt",".pdf",".md",".pptx",".docx",}
 UPLOAD_TERMINAL_STATUSES = {"completed","failed","cancelled",}
 _UPLOAD_TASKS: set[asyncio.Task] = set()
@@ -204,11 +208,10 @@ class KnowledgeService:
         )
 
     async def get_document(self,filename:str,user_id : int):
-        redis = get_redis()
         cache_key = self._document_cache_key(user_id, filename)
-        cached = await redis.get(cache_key)
+        cached = await cache_get_json(cache_key)
         if cached is not None:
-            return json.loads(cached)
+            return cached
         result = await self._get_user_documents(user_id)
         chunks = []
         all_images = []
@@ -231,7 +234,7 @@ class KnowledgeService:
                 ),
                 "content": document,
                 "page": metadata.get("page", 0),
-                "images": list(dict.fromkeys(all_images)),
+                "images": list(dict.fromkeys(images)),
             })
 
         if not chunks:
@@ -250,7 +253,7 @@ class KnowledgeService:
             "chunks":chunks,
         }
 
-        await redis.set(cache_key,json.dumps(detail,ensure_ascii=False),ex=300,)
+        await cache_set_json(cache_key,detail,ttl=300,)
 
         return detail
     async def delete_by_filename(self,filename:str,user_id:int):
@@ -343,7 +346,7 @@ class KnowledgeService:
     async def _save_upload_progress(self,user_id:int,state:dict):
         redis = get_redis()
         await redis.set(
-            self._upload_progress_key(user_id,state["task_id"]),
+            self._upload_progress_key(user_id, state["task_id"]),
             json.dumps(
                 state,
                 ensure_ascii=False,
@@ -362,8 +365,9 @@ class KnowledgeService:
 
         return json.loads(cached)
 
-    async def _ingest_saved_file(self,file_path:str,filename:str,user_id:int,content:bytes | None = None):
-        suffix = Path(file_path,"").suffix.lower()
+    async def _ingest_saved_file(self,file_path:str | Path,filename:str,user_id:int,content:bytes | None = None):
+        file_path = Path(file_path)
+        suffix =file_path.suffix.lower()
         if suffix not in ALLOWED_SUFFIXES:
             raise ValueError(
                 "仅支持 txt、pdf、md、pptx、docx 文件"
@@ -374,9 +378,9 @@ class KnowledgeService:
             )
         if not content:
             raise ValueError("上传文件不能为空")
-        filehash = hashlib.sha256(content).hexdigest()
+        filehash = hashlib.md5(content).hexdigest()
         document_id = f"{user_id}:{filehash}"
-        result = await self.processor.ingest_file( get_knowledge_Vector_Store().store,file_path,document_id=document_id,user_id=str(user_id),file_hash=filehash)
+        result = await self.processor.ingest_file( get_knowledge_Vector_Store().store,str(file_path),document_id=document_id,user_id=str(user_id),file_hash=filehash)
         await self._delete_user_document_cache(user_id)
         return {
             "filename": filename,
@@ -392,7 +396,7 @@ class KnowledgeService:
         items = []
         try:
             for index,file in enumerate(files):
-                filename = file.filename
+                filename = file.filename or f"file_{index}"
                 suffix = Path(filename).suffix.lower()
 
                 if suffix not in ALLOWED_SUFFIXES:
@@ -449,6 +453,7 @@ class KnowledgeService:
         state = {
             "task_id": task_id,
             "user_id": str(user_id),
+            "temp_dir":str(temp_dir),
             "status": "queued",
             "total": len(items),
             "processed": 0,
@@ -460,18 +465,15 @@ class KnowledgeService:
         }
 
         await self._save_upload_progress(user_id, state)
-        task = asyncio.create_task(
-            self._run_upload_task(
-                user_id=user_id,
-                temp_dir=temp_dir,
-                items=items,
-                state=state,
-             )
-        )
+        from db.arq_client import get_arq
 
-        _UPLOAD_TASKS.add(task)
-        task.add_done_callback(
-            _UPLOAD_TASKS.discard
+        await get_arq().enqueue_job(
+            "process_knowledge_upload",
+            user_id,
+            task_id,
+            str(temp_dir),
+            items,
+            _job_id=task_id,
         )
 
         return task_id
@@ -479,23 +481,17 @@ class KnowledgeService:
     async def _run_upload_task(self,user_id:int,temp_dir:Path,items:list[dict],state:dict):
         try:
             total = state["total"]
-
-            for index,item in enumerate(items,start=1):
+            start_index = min(max(int(state.get("processed",0)),0),total)
+            for index in range(start_index,total):
+                item = items[index]
                 filename = item["filename"]
-
+                item_number = index + 1
                 state.update({
                     "status": "processing",
                     "current_filename": filename,
-                    "progress": int(
-                        (index - 1) / total * 100
-                    ) if total else 0,
-                })
+                    "progress": int((index - 1) / total * 100) if total else 0,})
 
-                await self._save_upload_progress(
-                    user_id,
-                    state,
-                )
-
+                await self._save_upload_progress(user_id, state,)
                 try:
                     if item["error"]:
                         raise ValueError(item["error"])
@@ -526,11 +522,8 @@ class KnowledgeService:
                     state["succeeded"] += 1
 
                 state["results"].append(result)
-                state["processed"] = index
-                state["progress"] = int(
-                    index / total * 100
-                ) if total else 100
-
+                state["processed"] = item_number
+                state["progress"] = int(index / total * 100) if total else 100
                 await self._save_upload_progress(
                     user_id,
                     state,
@@ -582,17 +575,34 @@ class KnowledgeService:
                 temp_dir,
                 ignore_errors=True,
             )
-async def cancel_upload_tasks():
-    tasks = list(_UPLOAD_TASKS)
+    async def cancel_upload(self,user_id:int,task_id:str,):
+        state = await self.get_upload_progress(user_id, task_id)
 
-    for task in tasks:
-        task.cancel()
+        if state["status"] in UPLOAD_TERMINAL_STATUSES:
+            return state
 
-    if tasks:
-        await asyncio.gather(
-            *tasks,
-            return_exceptions=True,
-        )
+        state.update({
+            "status":"cancelled",
+            "current_filename":None,
+        })
+
+        await self._save_upload_progress(user_id, state)
+
+        from db.arq_client import get_arq
+
+        job = await get_arq().job(task_id)
+
+        if job is not None:
+            await job.abort()
+
+        if state["processed"] == 0:
+            await asyncio.to_thread(
+                shutil.rmtree,
+                state["temp_dir"],
+                ignore_errors=True,
+            )
+
+        return state
 
 
 
