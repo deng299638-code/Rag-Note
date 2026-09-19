@@ -1,10 +1,11 @@
 from langchain_core.tools import tool
 from rag.NoteRagService import NoteRagService
 from schemas.note_schemas import NoteCreate
+from services.long_term_memory import LongTermMemoryService
 from services.note_service import NoteService
 
 
-def build_note_tools(note_service : NoteService,note_rag: NoteRagService,user_id : int):
+def build_note_tools(note_service : NoteService,note_rag: NoteRagService,user_id : int,memory_service : LongTermMemoryService | None = None,working_memory=None,session_id: str | None = None,):
     @tool(
         "get_note_stats",
         description="当用户询问笔记总数、分类数量或笔记统计时调用。"
@@ -106,5 +107,76 @@ def build_note_tools(note_service : NoteService,note_rag: NoteRagService,user_id
             )
         return "\n\n".join(lines)
 
-    return [get_note_stats,search_notes,create_note,get_related_notes]
+    tools = [get_note_stats,search_notes,create_note,get_related_notes]
+    if memory_service is not None:
+        @tool(
+            "remember_user_memory",
+            description=(
+                    "只有用户明确说‘记住、保存、以后都这样’时才调用。"
+                    "不要保存密码、Token、验证码等敏感信息。"
+            ),
+        )
+        async def remember_user_memory(key: str, value: str, kind: str = "fact", ):
+            try:
+                await memory_service.remember(
+                    user_id=user_id,
+                    key=key,
+                    content=value,
+                    kind=kind,
+                    source_session_id=session_id,
+                )
+
+                return f"已记住：{value}"
+            except Exception as exc:
+                return f"保存长期记忆失败：{exc}"
+
+        @tool(
+            "forget_user_memory",
+            description="只有用户明确要求忘记某项长期记忆时才调用。",
+        )
+        async def forget_user_memory(key: str):
+            deleted = await memory_service.forget(
+                user_id=user_id,
+                key=key,
+            )
+            return "已删除。" if deleted else "没有找到这条记忆。"
+
+        tools.extend(
+            [
+                remember_user_memory,
+                forget_user_memory,
+            ]
+        )
+
+    if working_memory is not None:
+        @tool(
+            "update_working_memory",
+            description=(
+                     "当当前任务目标、约束、决策或待解决问题发生变化时调用。"
+                     "这里只保存当前会话临时状态，不保存永久用户偏好。"
+            ),
+        )
+        async def update_working_memory(goal: str = "",constraints: str = "",decisions: str = "",open_questions: str = "",):
+            patch = {}
+            if goal.strip():
+                patch["goal"] = goal.strip()
+
+            for field,value in (
+                ("constraints", constraints),
+                ("decisions", decisions),
+                ("open_questions", open_questions),
+            ):
+                if value.strip():
+                    patch[field] = [item.strip() for item in value.replace(":",";").split(";") if item.strip()]
+
+
+            await working_memory.patch(
+                user_id=user_id,
+                session_id=session_id,
+                patch=patch,
+            )
+            return "当前工作记忆已更新。"
+        tools.append(update_working_memory)
+
+    return tools
 

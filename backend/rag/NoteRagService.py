@@ -1,8 +1,11 @@
+import logging
+
 from rag.knowledge_rag_service import KnowledgeRagService
 from rag.note_hybrid_retriever import NoteHybridRetriever
 from rag.reorder_service import ReorderService
+from rag.rerank_confidence import assess_rerank_confidence
 
-
+logger = logging.getLogger(__name__)
 class NoteRagService:
 
     def __init__(self):
@@ -38,7 +41,8 @@ class NoteRagService:
         reorder = await self.reorder_service.reorder_documents(
             query, candidates,metadata
         )
-
+        assessment = assess_rerank_confidence(reorder,min_score=0.5,min_margin=0.1)
+        logger.info("RAG confidence: query=%s, assessment=%s",query,assessment,)
         return reorder[:limit]
 
     async def retriever_context(self,query,user_id):

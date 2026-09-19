@@ -2,10 +2,8 @@ import asyncio
 import logging
 import os
 import tempfile
-
 from pathlib import Path
 from langchain_core.documents import Document
-
 from utils.image_extractor import extract_images_from_pdf
 from utils.ocr_service import OCRService
 from utils.vision_service import VisionService

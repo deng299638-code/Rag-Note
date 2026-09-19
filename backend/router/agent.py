@@ -5,7 +5,7 @@ from fastapi.responses import StreamingResponse
 from schemas.agent_schemas import (
     AgentQueryRequest,
     ChatSessionListResponse,
-    ChatSessionQueryParams, ChatMessageQueryParams, ChatMessageListResponse,
+    ChatSessionQueryParams, ChatMessageQueryParams, ChatMessageListResponse, ChatHistoryResponse,
 )
 from schemas.common_schemas import ApiResponse
 from services.AgentService import (
@@ -109,4 +109,14 @@ async def list_chat_messages(
             "total_pages": total_pages,
         },
     }
-
+@agent_router.get("/sessions/{session_id}",response_model=ApiResponse[ChatHistoryResponse])
+async def get_session_history( session_id: str,user_id: int = Depends(get_current_user_id),service: ChatService = Depends(get_chat_service),):
+    history = await service.get_history(user_id, session_id)
+    return{
+        "code":200,
+        "message":"获取会话列表成功",
+        "data":{
+            "session_id":session_id,
+            "history":history,
+        }
+    }

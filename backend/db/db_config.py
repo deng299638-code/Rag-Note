@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from models.user import Base
 
 load_dotenv()
-ASYNC_DATABSE_URL = (f"mysql+aiomysql://{os.getenv('MYSQL_USER','root')}:"
+ASYNC_DATABASE_URL = (f"mysql+aiomysql://{os.getenv('MYSQL_USER','root')}:"
                      f"{os.getenv('MYSQL_PASSWORD', '')}"
                      f"@{os.getenv('MYSQL_HOST', 'localhost')}:"
                      f"{os.getenv('MYSQL_PORT', '3306')}/"
@@ -16,7 +16,7 @@ ASYNC_DATABSE_URL = (f"mysql+aiomysql://{os.getenv('MYSQL_USER','root')}:"
                      "?charset=utf8mb4")
 
 engine = create_async_engine(
-    url=ASYNC_DATABSE_URL,
+    url=ASYNC_DATABASE_URL,
     pool_size=10,  # 连接池中保持的持久连接数
     max_overflow=20,  # 连接池中允许创建的额外连接数
     echo=False  # 输出sql日志
@@ -41,7 +41,7 @@ async def get_db():
             await db.close()
 
 async def create_tables():
-    from models import chat, note, user, note_template  # noqa: F401
+    from models import chat, note, user, note_template,memory  # noqa: F401
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
 

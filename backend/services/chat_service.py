@@ -5,6 +5,7 @@ from db.db_config import get_db
 from exceptions.chat_exception import ChatSessionNotFoundError
 from models.chat import ChatSession
 from repository.chat import ChatRepository
+from services.WorkingMemoryService import WorkingMemoryService
 
 
 class ChatService:
@@ -39,8 +40,11 @@ class ChatService:
     async def delete_session(self,user_id : int ,session_id : str):
         session = await self.chatRepository.get_owned_session(session_id,user_id)
         await self.chatRepository.delete(session)
+        await WorkingMemoryService().clear(user_id=user_id, session_id=session_id,)
         await self.db.commit()
 
+    async def get_history(self,user_id:int,session_id:str,):
+        return self.chatRepository.get_history(session_id, user_id)
 
 
 def get_chat_service(

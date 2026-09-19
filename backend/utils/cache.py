@@ -13,13 +13,13 @@ async def cache_get_json(key:str):
         value = await get_redis().get(key)
 
         if value is None:
-            return None
+            return {}
 
         return json.loads(value)
 
     except (RedisError, RuntimeError, json.JSONDecodeError) as exc:
         logger.warning("读取 Redis 缓存失败，key=%s，error=%s", key, exc)
-        return None
+        return {}
 
 async def cache_set_json(key:str,value,ttl:int):
     try:

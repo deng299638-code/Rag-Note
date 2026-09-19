@@ -55,3 +55,8 @@ class ChatMessageListResponse(BaseModel):
 class ChatMessageQueryParams(BaseModel):
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=50, ge=1, le=100)
+
+
+class ChatHistoryResponse(BaseModel):
+    session_id: str
+    history: list[tuple[str, str]]
