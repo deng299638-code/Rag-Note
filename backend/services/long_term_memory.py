@@ -57,7 +57,7 @@ class LongTermMemoryService:
 
         self._validate(key,content, kind)
 
-        memory = await self.db.scalar(select(UserMemory).where(UserMemory.user_id == user_id and UserMemory.memory_key == key))
+        memory = await self.db.scalar(select(UserMemory).where(UserMemory.user_id == user_id ,UserMemory.memory_key == key))
 
         if memory is None:
             memory = UserMemory(

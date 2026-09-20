@@ -1,12 +1,24 @@
 import asyncio
+import logging
+from dataclasses import dataclass
 
 from langchain_classic.retrievers import EnsembleRetriever
 from langchain_community.retrievers import BM25Retriever
 from langchain_core.documents import Document
 
 from rag.note_vector_store import get_note_vector_store
-
+logger = logging.getLogger(__name__)
 TOP_K = 5
+BM25_CACHE_TTL = 300
+INDEX_SOURCE = "notes"
+
+
+@dataclass(slots=True)
+class BM25CacheEntry:
+    version: int | None
+    expires_at: float
+    retriever: BM25Retriever | None
+
 
 class NoteHybridRetriever:
     async def _get_bm25_retriever(self,user_id:int) ->  BM25Retriever | None:

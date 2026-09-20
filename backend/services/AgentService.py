@@ -12,9 +12,9 @@ from langchain_openai import ChatOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.db_config import get_db
-from exceptions.chat_exception import ChatSessionNotFoundError
 from rag.NoteRagService import NoteRagService
 from rag.knowledge_rag_service import KnowledgeRagService
+from rag.query import QueryRouter
 from rag.tools import build_note_tools
 from repository.chat import ChatRepository
 from repository.note import NoteRepository
@@ -39,6 +39,7 @@ class AgentService:
             streaming= True,
             temperature= 0.7,
         )
+        self.query_router = QueryRouter(self.chat_model)
         self.note_rag_service = NoteRagService()
         self.knowledge_rag_service = KnowledgeRagService()
         self.note_service = NoteService(db)
@@ -100,25 +101,40 @@ class AgentService:
         session = await self.repository.get_or_create_session(session_id, user_id)
         await self.db.commit()
 
-        rag_content,memory_content = await asyncio.gather(
-            self.build_rag_context(payload.query, user_id),
-            self.long_term_memory.build_context(user_id,payload.query),
-            return_exceptions=True,
-        )#从向量数据库检索
+        history = await self.repository.get_history(session_id, user_id)#加载本轮对话的聊天记录
+        history = self._trim_history(history,8000)
 
-        rag_content = (
-            ""
-            if isinstance(rag_content, Exception)
-            else rag_content
+        plan = await self.query_router.route(payload.query,history)
+        logger.info(
+            "查询路由：intent=%s, use_rag=%s, query=%s, reason=%s",
+            plan.intent,
+            plan.use_rag,
+            plan.rewritten_query,
+            plan.reason,
         )
+
+        retrieval_query = plan.rewritten_query or payload.query
+
+        if plan.use_rag:
+            rag_content, memory_content = await asyncio.gather(
+                self.build_rag_context(payload.query, user_id),
+                self.long_term_memory.build_context(user_id, payload.query),
+                return_exceptions=True,
+            )  # 从向量数据库检索
+
+        else:
+            rag_content = ""
+            memory_content = await self.long_term_memory.build_context(
+                user_id,
+                payload.query,
+            )
+
         long_term_context = (
             ""
             if isinstance(memory_content, Exception)
             else memory_content
         )
 
-        history = await self.repository.get_history(session_id, user_id)#加载本轮对话的聊天记录
-        history = self._trim_history(history,8000)
         working_state = await self.working_memory.get(
             user_id, session_id
 

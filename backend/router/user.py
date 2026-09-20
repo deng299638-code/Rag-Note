@@ -33,7 +33,7 @@ async def register(rep: RegisterRequest,db : AsyncSession = Depends(get_db)):
             detail = {"confirm_password":"密码和确认的密码不一致"}
         )
 
-    result = await db.execute(select(User).where(User.email == rep.email))
+    result = await db.execute(select(User).where(User.email == rep.email , User.username == rep.username))
 
     existing_user = result.scalar_one_or_none()
 
@@ -41,7 +41,9 @@ async def register(rep: RegisterRequest,db : AsyncSession = Depends(get_db)):
     if existing_user:
         raise HTTPException(
             status_code=400,
-            detail={"email": "该邮箱已被注册"}
+            detail={
+                "email": "该邮箱或用户名已被注册"
+            }
         )
 
     user = User(

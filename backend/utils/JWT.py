@@ -14,6 +14,10 @@ ALGORITHM = os.getenv("ALGORITHM")
 security = HTTPBearer()
 
 def create_access_token(user_id: int) -> str:
+
+    if not SECRET_KEY or not ALGORITHM:
+        raise ValueError("请检查是否已经配置 SECRET_KEY , ALGORITHM")
+
     expire_time = datetime.now(timezone.utc) + timedelta(hours=1)
 
     payload = {

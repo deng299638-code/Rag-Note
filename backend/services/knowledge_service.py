@@ -210,7 +210,7 @@ class KnowledgeService:
     async def get_document(self,filename:str,user_id : int):
         cache_key = self._document_cache_key(user_id, filename)
         cached = await cache_get_json(cache_key)
-        if not cached:
+        if cached:
             return cached
         result = await self._get_user_documents(user_id)
         chunks = []

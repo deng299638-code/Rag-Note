@@ -215,6 +215,8 @@ async def batch_export_notes(
         for note in notes:
             if note.tags:
                 tags = f"[{','.join(note.tags)}]\n"
+            else:
+                tags = ""
 
             markdown = (
                 "---\n"

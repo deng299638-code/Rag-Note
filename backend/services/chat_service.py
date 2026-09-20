@@ -44,7 +44,7 @@ class ChatService:
         await self.db.commit()
 
     async def get_history(self,user_id:int,session_id:str,):
-        return self.chatRepository.get_history(session_id, user_id)
+        return await self.chatRepository.get_history(session_id, user_id)
 
 
 def get_chat_service(
