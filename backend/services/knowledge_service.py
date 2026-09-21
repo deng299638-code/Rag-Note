@@ -29,7 +29,8 @@ class KnowledgeService:
         self.processor = DocumentProcessor()
 
     async def add_single(self,file_path:UploadFile,user_id : int):
-
+        import logging
+        logging.info(f"UploadFile原始filename: {file_path.filename}")
         suffix = Path(file_path.filename or "").suffix.lower()
         if suffix not in ALLOWED_SUFFIXES:
             raise ValueError(
@@ -180,11 +181,13 @@ class KnowledgeService:
                     ),
                     "status":"completed",
                     "chunk_count":0,
-                    "created_at":None,
+                    "created_at":metadata.get("created_at"),
                 },
             )
 
             item["chunk_count"] += 1
+            if not item.get("created_at") and metadata.get("created_at"):
+                item["created_at"] = metadata.get("created_at")
 
         return list(grouped.values())
     async def _get_user_documents(self, user_id: int):
@@ -380,7 +383,7 @@ class KnowledgeService:
             raise ValueError("上传文件不能为空")
         filehash = hashlib.md5(content).hexdigest()
         document_id = f"{user_id}:{filehash}"
-        result = await self.processor.ingest_file( get_knowledge_Vector_Store().store,str(file_path),document_id=document_id,user_id=str(user_id),file_hash=filehash)
+        result = await self.processor.ingest_file( get_knowledge_Vector_Store().store,str(file_path),document_id=document_id,user_id=str(user_id),file_hash=filehash,original_filename=filename)
         await self._delete_user_document_cache(user_id)
         return {
             "filename": filename,

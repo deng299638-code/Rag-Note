@@ -1,0 +1,20 @@
+这篇论文主要解决什么问题？
+ReAct 的全称是什么？
+ReAct 的核心思想是什么？
+ReAct 和 Chain-of-Thought 有什么区别？
+ReAct 和纯工具调用有什么区别？
+为什么只使用 Chain-of-Thought 可能产生幻觉？
+为什么只使用行动计划也存在问题？
+ReAct 中的 Observation 是什么？
+ReAct 如何处理工具返回的新信息？
+ReAct 为什么能够减少错误传播？
+论文在哪些类型的任务上验证了 ReAct？
+论文使用了哪些知识任务数据集？
+HotpotQA 适合验证 ReAct 的什么能力？
+FEVER 适合验证 ReAct 的什么能力？
+论文使用了哪些交互式决策任务？
+ReAct 在 ALFWorld 上取得了什么结果？
+ReAct 在 WebShop 上取得了什么结果？
+ReAct 对模型可解释性有什么帮助？
+ReAct 对当前智能笔记项目有什么借鉴意义？
+ReAct 的局限性是什么？

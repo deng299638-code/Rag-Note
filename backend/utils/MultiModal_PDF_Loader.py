@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import re
 import tempfile
 from pathlib import Path
 from langchain_core.documents import Document
@@ -9,6 +10,16 @@ from utils.ocr_service import OCRService
 from utils.vision_service import VisionService
 
 logger = logging.getLogger(__name__)
+
+# 高频英文词，用于判断文本层是否为乱码（字体 ToUnicode 映射损坏时整页字母被整体替换）
+_COMMON_ENGLISH_WORDS = {
+    "the", "and", "you", "that", "have", "for", "not", "with", "this",
+    "from", "but", "they", "are", "was", "were", "been", "has", "had",
+    "its", "it", "is", "to", "of", "in", "on", "we", "our", "their",
+    "can", "will", "would", "which", "when", "what", "your", "more",
+    "than", "into", "also", "such", "use", "used", "using", "show",
+    "shown", "based", "between", "through", "where", "while", "during",
+}
 
 class MultiModalPDFLoader:
     def __init__(self,ocr_service=None,vision_service=None,text_threshold:int = 100,render_scale:float = 2.0):
@@ -44,6 +55,23 @@ class MultiModalPDFLoader:
             return (page.get_text("text") or "").strip()
         except TypeError:
             return (page.get_text() or "" ).strip()
+
+    @staticmethod
+    def _text_looks_garbled(text: str) -> bool:
+        """文本层存在但字体映射损坏时，字符会被整体替换（如整段字母位移），
+        长度足够却没有任何正常英文单词。中文为主的文本不做此判定。"""
+        sample = text[:3000]
+        if len(sample) < 200:
+            return False
+        cjk = len(re.findall(r"[\u4e00-\u9fff]", sample))
+        if cjk > 50:
+            return False
+        words = re.findall(r"[a-z']{3,}", sample.lower())
+        if not words:
+            return True
+        hits = sum(1 for w in words if w in _COMMON_ENGLISH_WORDS)
+        # 3000 字符的正常英文正文高频词命中通常 >= 5；乱码几乎为 0
+        return hits < 2
     #判断PDF中是否有嵌入图片
     @staticmethod
     def _has_image(page):
@@ -84,7 +112,7 @@ class MultiModalPDFLoader:
             return None
 
     @staticmethod
-    def _merge_text(native_text : str,ocr_text:str,vision_text:str,):
+    def _merge_text(native_text : str,ocr_text:str,vision_text:str,native_garbled: bool = False,):
         parts = []
         stages = []
 
@@ -92,14 +120,23 @@ class MultiModalPDFLoader:
         ocr_text = ocr_text.strip()
         vision_text = vision_text.strip()
 
-        if native_text:
+        # 文本层是乱码时，OCR 结果作为正文；OCR 失败才回退到乱码原文
+        if native_text and not native_garbled:
             parts.append(native_text)
             stages.append("text")
 
         if ocr_text:
             stages.append("ocr")
-            if ocr_text != native_text:
+            body = ocr_text if native_garbled else None
+            if body:
+                parts.append(body)
+            else:
                 parts.append(f"[OCR文本]:\n{ocr_text}")
+
+        if native_garbled and native_text and not ocr_text:
+            # OCR 未启用或失败，只能保留乱码原文，避免正文为空
+            parts.append(native_text)
+            stages.append("text-fallback")
 
         if vision_text:
             parts.append(f"[页面视觉描述]:\n{vision_text}")
@@ -109,9 +146,12 @@ class MultiModalPDFLoader:
 
     @staticmethod
     def _build_document(content:str,file_path:str,page_number:int,file_hash:str | None,user_id : str|None,processing_mode:str,has_images:bool,image_paths:list[str] | None =None):
+
+        filename = Path(file_path).name
         metadata = {
+            "original_filename":filename,
             "page":page_number,
-            "source":Path(file_path).name,
+            "source":filename,
             "processing_mode":processing_mode,
             "has_images":has_images,
             #后续图片提取时替换真实路径
@@ -153,13 +193,17 @@ class MultiModalPDFLoader:
             for page_number in range(len(pdf)):
                 page = pdf[page_number]
                 native_text = self._page_text(page)
+                native_garbled = self._text_looks_garbled(native_text)
                 image_paths = image_map.get(page_number,[])
                 has_images = self._has_image(page) or bool(image_paths)
 
 
                 needs_ocr = (
                     self.ocr_enabled
-                    and len(native_text) < self.text_threshold
+                    and (
+                        len(native_text) < self.text_threshold
+                        or native_garbled
+                    )
                 )
 
                 needs_vlm = (
@@ -194,7 +238,7 @@ class MultiModalPDFLoader:
 
                     finally:
                         Path(temp_path).unlink(missing_ok=True)
-                content,mode = self._merge_text(native_text, ocr_text, vision_text)
+                content,mode = self._merge_text(native_text, ocr_text, vision_text,native_garbled)
 
                 documents.append(
                     self._build_document(
@@ -223,12 +267,16 @@ class MultiModalPDFLoader:
             for page_number in range(len(pdf)):
                 page = pdf[page_number]
                 native_text = self._page_text(page)
+                native_garbled = self._text_looks_garbled(native_text)
                 image_paths = image_map.get(page_number,[])
                 has_images = self._has_image(page) or bool(image_paths)
 
                 needs_ocr = (
                         self.ocr_enabled
-                        and len(native_text) < self.text_threshold
+                        and (
+                            len(native_text) < self.text_threshold
+                            or native_garbled
+                        )
                 )
 
                 needs_vlm = (
@@ -263,7 +311,7 @@ class MultiModalPDFLoader:
 
                     finally:
                         Path(temp_path).unlink(missing_ok=True)
-                content, mode = self._merge_text(native_text, ocr_text, vision_text)
+                content, mode = self._merge_text(native_text, ocr_text, vision_text, native_garbled)
 
                 documents.append(
                     self._build_document(

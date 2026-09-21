@@ -1,5 +1,6 @@
 import asyncio
 import os.path
+from datetime import datetime, timezone
 
 from langchain_core.documents import Document
 
@@ -60,8 +61,9 @@ class DocumentProcessor:
 
         return []
 
-    def enrich_chunk_metadata(self, chunks: list[Document], *, file_path: str, user_id: str | None = None,file_hash: str | None = None,document_id :str):
-        filename = os.path.basename(file_path)
+    def enrich_chunk_metadata(self, chunks: list[Document], *, file_path: str, user_id: str | None = None,file_hash: str | None = None,document_id :str,original_filename: str | None = None,created_at: str | None = None):
+        filename = original_filename or os.path.basename(file_path)
+        uploaded_at = created_at or datetime.now(timezone.utc).isoformat()
 
         for index, chunk in enumerate(chunks):
             chunk.metadata = {
@@ -69,7 +71,8 @@ class DocumentProcessor:
                 "document_id": document_id,
                 "original_filename": filename,
                 "chunk_index": index,
-                "chunk_hash": hash_text(chunk.page_content)
+                "chunk_hash": hash_text(chunk.page_content),
+                "created_at": uploaded_at,
             }
 
             if user_id is not None:
@@ -82,7 +85,7 @@ class DocumentProcessor:
 
 
 
-    def process_file_sync(self,file_path: str,document_id: str,user_id : str | None = None,file_hash : str | None = None):
+    def process_file_sync(self,file_path: str,document_id: str,user_id : str | None = None,file_hash : str | None = None,original_filename: str | None = None,created_at: str | None = None):
         documents = self.get_file_document_sync(file_path,file_hash, user_id)
 
         if not documents:
@@ -90,9 +93,9 @@ class DocumentProcessor:
 
         chunks =  self.split_documents_sync(documents)
 
-        return self.enrich_chunk_metadata(chunks,file_path=file_path, user_id=user_id, file_hash=file_hash,document_id = document_id)
+        return self.enrich_chunk_metadata(chunks,file_path=file_path, user_id=user_id, file_hash=file_hash,document_id = document_id,original_filename=original_filename,created_at=created_at)
 
-    async def process_file(self, file_path: str,document_id: str,user_id : str | None = None,file_hash : str | None = None):
+    async def process_file(self, file_path: str,document_id: str,user_id : str | None = None,file_hash : str | None = None,original_filename: str | None = None,created_at: str | None = None):
         documents = await self.get_file_document(file_path,file_hash, user_id)
 
         if not documents:
@@ -100,11 +103,21 @@ class DocumentProcessor:
 
         chunks = await self.split_documents(documents)
 
-        return self.enrich_chunk_metadata(chunks,file_path=file_path, user_id=user_id,file_hash = file_hash,document_id = document_id)
+        return self.enrich_chunk_metadata(chunks,file_path=file_path, user_id=user_id,file_hash = file_hash,document_id = document_id,original_filename=original_filename,created_at=created_at)
 
 
 
-    async def ingest_file(self,store,file_path:str,document_id:str,user_id:str,file_hash:str):
+    @staticmethod
+    def _resolve_created_at(created_at: str | None, old_records) -> str | None:
+        if created_at is not None:
+            return created_at
+        for _, old_doc in old_records or []:
+            existing = old_doc.metadata.get("created_at")
+            if existing:
+                return existing
+        return None
+
+    async def ingest_file(self,store,file_path:str,document_id:str,user_id:str,file_hash:str,original_filename: str | None = None,created_at: str | None = None):
 
 
         old_records = await asyncio.to_thread(
@@ -131,6 +144,8 @@ class DocumentProcessor:
             document_id=document_id,
             user_id=user_id,
             file_hash=file_hash,
+            original_filename=original_filename,
+            created_at=self._resolve_created_at(created_at, old_records),
         )
         if not new_chunks:
             raise ValueError("文件未解析出可索引文本，已保留原有切片")

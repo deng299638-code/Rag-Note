@@ -27,7 +27,7 @@ class VisionService:
         if self._model is not None:
             return self._model
 
-        base_url  = os.getenv("VISION_BASE_UR","")
+        base_url  = os.getenv("VISION_BASE_URL","")
         api_key = os.getenv("VISION_API_KEY","")
 
         if not base_url and not api_key:
@@ -38,11 +38,11 @@ class VisionService:
             raise ValueError("视觉模型的地址和密钥配置不完整")
 
         self._model = ChatOpenAI(
-            model=os.getenv("OPENAI_MODEL_NAME","qwen-vl-max"),
+            model=os.getenv("OPENAI_VISION_MODEL_NAME","qwen-vl-max"),
             base_url=base_url,
             api_key=api_key,
             temperature=0,
-            streaing=False,
+            streaming=False,
             timeout=60,
             max_retries=1,
         )

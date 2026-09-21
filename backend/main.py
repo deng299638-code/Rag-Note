@@ -1,4 +1,14 @@
+import warnings
+
 from fastapi import FastAPI
+
+# langchain-core 1.x 的 Generation.parsed 字段类型标注与 pydantic v2 序列化器不完全一致，
+# 结构化输出正常返回 QueryPlan，仅在序列化内部对象时刷出 UserWarning，不影响业务结果。
+warnings.filterwarnings(
+    "ignore",
+    message=".*Pydantic serializer warnings.*Expected `none`.*",
+    category=UserWarning,
+)
 from core.exception_handlers import note_not_found_handler, note_template_not_found_handler, session_not_found_handler
 from db.arq_client import init_arq, close_arq
 from db.redis_client import init_redis, close_redis

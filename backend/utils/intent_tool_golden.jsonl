@@ -1,0 +1,20 @@
+{"query":"你好","expected_intent":"chat","expected_tools":[]}
+{"query":"介绍一下你能做什么","expected_intent":"chat","expected_tools":[]}
+{"query":"搜索我的 Redis 学习笔记","expected_intent":"note_search","expected_tools":["search_notes"]}
+{"query":"我的笔记里有没有关于 RAG 的内容？","expected_intent":"note_search","expected_tools":["search_notes"]}
+{"query":"查看我的笔记统计","expected_intent":"note_stats","expected_tools":["get_note_stats"]}
+{"query":"我一共有多少篇笔记？","expected_intent":"note_stats","expected_tools":["get_note_stats"]}
+{"query":"今天需要回顾什么？","expected_intent":"review_today","expected_tools":[]}
+{"query":"查看今日待复习的笔记","expected_intent":"review_today","expected_tools":[]}
+{"query":"创建笔记，标题是 RAG 测试，内容是记录一次评测结果","expected_intent":"create_note","expected_tools":["create_note"]}
+{"query":"请把这段内容保存为笔记：向量检索需要评测","expected_intent":"create_note","expected_tools":["create_note"]}
+{"query":"查找笔记 12 的相似笔记","expected_intent":"related_notes","expected_tools":["get_related_notes"]}
+{"query":"推荐和笔记 12 相关的内容","expected_intent":"related_notes","expected_tools":["get_related_notes"]}
+{"query":"记住我更喜欢用中文回答","expected_intent":"remember","expected_tools":["remember_user_memory"]}
+{"query":"以后都使用简洁的项目符号回答，记住这个习惯","expected_intent":"remember","expected_tools":["remember_user_memory"]}
+{"query":"忘记我喜欢中文回答这件事","expected_intent":"forget","expected_tools":["forget_user_memory"]}
+{"query":"删除这条记忆：喜欢简洁回答","expected_intent":"forget","expected_tools":["forget_user_memory"]}
+{"query":"当前任务改成评测意图识别准确率","expected_intent":"working_memory","expected_tools":["update_working_memory"]}
+{"query":"把当前约束设置为不能修改生产数据","expected_intent":"working_memory","expected_tools":["update_working_memory"]}
+{"query":"RAG 的上下文精度和上下文召回率有什么区别？","expected_intent":"rag","expected_tools":[]}
+{"query":"如何用 Milvus 实现混合检索？","expected_intent":"rag","expected_tools":[]}
