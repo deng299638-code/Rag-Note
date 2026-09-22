@@ -257,7 +257,7 @@ uv run python utils/RAGas.py
 
 
 ```
-{'faithfulness': 0.9102, 'answer\_relevancy': 0.8748, 'context\_precision': 0.3884, 'context\_recall': 0.8500}
+{'faithfulness': 0.9102, 'answer\_relevancy': 0.8748, 'context\_recall': 0.8500}
 ```
 
 明细结果（每条样本的检索上下文、回答与各项得分）写入 `backend/data/ragas_results.csv`。
