@@ -45,7 +45,7 @@
 
 ![会话管理](screenshots/session-manage.png)
 
-![知识库管理](screenshots/knowledge-base.png)
+![知识库管理](screenshots/knowledge-upload.png)
 
 ![知识库文档详情](screenshots/knowledge-detail.png)
 
