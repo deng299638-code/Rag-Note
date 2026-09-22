@@ -39,9 +39,9 @@
 
 ## 功能展示
 
-![笔记编辑](screenshots/note-editor.png)
-
 ![AI 对话](screenshots/ai-chat.png)
+
+![笔记编辑](screenshots/note-editor.png)
 
 ![会话管理](screenshots/session-manage.png)
 
