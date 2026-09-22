@@ -37,7 +37,20 @@
 
 * **RAG 质量评测**：内置 RAGAS 评测脚本，一键评估 faithfulness /answer\_relevancy/context\_precision /context\_recall
 
-* 
+## 功能展示
+
+![笔记编辑](screenshots/note-editor.png)
+
+![AI 对话](screenshots/ai-chat.png)
+
+![会话管理](screenshots/session-manage.png)
+
+![知识库管理](screenshots/knowledge-base.png)
+
+![知识库文档详情](screenshots/knowledge-detail.png)
+
+
+  
 ## 技术栈
 
 
