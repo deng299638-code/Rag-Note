@@ -9,6 +9,7 @@ from fastapi import Depends
 from db.db_config import get_db
 from exceptions.note_exceptions import NoteNotFoundError
 from models.note import Note
+from rag.note_hybrid_retriever import NoteHybridRetriever
 from rag.note_vector_store import get_note_vector_store
 from schemas.note_schemas import NoteCreate, NoteUpdate, NoteQueryParams
 
@@ -35,7 +36,12 @@ class NoteService:
         try:
             await self._upsert_note_vecto(note)
         except Exception:
-            logger.exception("笔记向量写入失败，note_id=%s", note.id)
+            logger.exception(
+                "笔记向量写入失败，note_id=%s",
+                note.id,
+            )
+        finally:
+            await NoteHybridRetriever.invalidate_user(user_id)
 
         return note
 
@@ -137,8 +143,12 @@ class NoteService:
             try:
                 await self._upsert_note_vecto(note)
             except Exception:
-                logger.exception("笔记向量更新失败，note_id=%s", note.id)
-
+                logger.exception(
+                    "笔记向量更新失败，note_id=%s",
+                    note.id,
+                )
+            finally:
+                await NoteHybridRetriever.invalidate_user(user_id)
 
         return note
 
@@ -153,9 +163,14 @@ class NoteService:
         await self.db.commit()
 
         try:
-            await self._delete_note_vector(note_id,user_id)
+            await self._delete_note_vector(note_id, user_id)
         except Exception:
-            logger.exception("笔记向量删除失败，note_id=%s", note_id)
+            logger.exception(
+                "笔记向量删除失败，note_id=%s",
+                note_id,
+            )
+        finally:
+            await NoteHybridRetriever.invalidate_user(user_id)
 
     async def toggle_pin(
         self,

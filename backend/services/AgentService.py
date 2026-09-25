@@ -117,8 +117,8 @@ class AgentService:
 
         if plan.use_rag:
             rag_content, memory_content = await asyncio.gather(
-                self.build_rag_context(payload.query, user_id),
-                self.long_term_memory.build_context(user_id, payload.query),
+                self.build_rag_context(retrieval_query, user_id),
+                self.long_term_memory.build_context(user_id, retrieval_query),
                 return_exceptions=True,
             )  # 从向量数据库检索
 

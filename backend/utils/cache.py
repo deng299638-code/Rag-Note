@@ -63,7 +63,7 @@ async def get_rag_version(source: str, user_id: int) -> int:
 
 async def bump_rag_version(source: str, user_id: int) -> int:
     return await get_redis().incr(
-        rag_version_key(source, user_id)
+        rag_version_key(source, user_id)#版本号+1
     )
 
 

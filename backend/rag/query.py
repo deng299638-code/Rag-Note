@@ -90,17 +90,7 @@ class QueryRouter:
 
             if not isinstance(result,QueryPlan):
                 raise TypeError("查询路由模型返回格式错误")
-            rewritten_query = (
-                " ".join(result.rewritten_query.strip().split()) or normalized_query
-            )
-            if not result.use_rag:
-                rewritten_query = normalized_query
-
-            return result.model_copy(
-                update={
-                    "rewritten_query": rewritten_query,
-                }
-            )
+            return self._normalize_model_plan(result,query)
 
         except Exception as exc:
             logger.warning("查询路由失败，降级为 RAG：%s", exc)
@@ -200,6 +190,26 @@ class QueryRouter:
                 )
 
         return None
+
+    @staticmethod
+    def _normalize_model_plan(plan:QueryPlan,original_query:str):
+        rewritten_query = " ".join((plan.rewritten_query  or "").strip().split()) or original_query
+
+        use_rag = plan.intent == "rag"
+
+        if not use_rag:
+            rewritten_query = original_query
+
+        confidence = max(0.0, min(float(plan.confidence), 1.0))
+
+        return plan.model_copy(
+            update={
+                "rewritten_query": rewritten_query,
+                "use_rag": use_rag,
+                "confidence": confidence,
+                "reason": f"模型识别：{plan.reason}".strip(),
+            }
+        )
 
     @staticmethod
     def _format_history(history:Sequence[tuple[str,str]] | None):
