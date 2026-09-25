@@ -5,3 +5,11 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .venv/
+
+# 运行日志
+*.log
+backend/rag_eval_run*.log
+
+# 评估产物与临时缓存
+backend/data/
+backend/tmp/
