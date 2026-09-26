@@ -41,7 +41,7 @@ async def get_db():
             await db.close()
 
 async def create_tables():
-    from models import chat, note, user, note_template,memory  # noqa: F401
+    from models import chat, note, user, note_template,memory,graph # noqa: F401
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
 

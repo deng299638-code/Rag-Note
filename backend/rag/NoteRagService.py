@@ -52,3 +52,26 @@ class NoteRagService:
             item["document"]
             for item in result
         )
+
+    async def retriever_context_with_sources(self,query:str,user_id:int,limit:int = 3):
+        result = await self.search_notes(query, user_id, limit)
+
+        context_parts = []
+        sources = []
+
+        for item in result:
+            metadata = item.get("metadata",{})
+            title = metadata.get("title","无标题")
+            note_id = metadata.get("note_id")
+
+            context_parts.append(item["document"])
+            sources.append({
+                "note_id": note_id,
+                "title": title,
+                "score": item.get("similarity", 0),
+            })
+
+        return {
+            "context": "\n\n".join(context_parts),
+            "sources": sources,
+        }

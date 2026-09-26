@@ -33,6 +33,7 @@ dependencies = [
     "arq>=0.25.0",
     "datasets>=5.0.1",
     "ragas>=0.4.3",
+    "neo4j>=6.3.1",
 ]
 
 [[tool.uv.index]]

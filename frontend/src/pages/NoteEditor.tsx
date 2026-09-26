@@ -2,12 +2,12 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { ArrowLeft, Save, Trash2, Download, Link2, ListTree, FileText, Users, GraduationCap, BookOpen, ListTodo, BookMarked, Plus, GripVertical } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, Download, Link2, ListTree, FileText, Users, GraduationCap, BookOpen, ListTodo, BookMarked, Plus, GripVertical, WandSparkles, Check, X } from 'lucide-react'
 import TiptapEditor, { type TiptapEditorHandle } from '../components/TiptapEditor'
 import TagInput from '../components/common/TagInput'
 import RelatedFragments from '../components/note/RelatedFragments'
 import OutlinePanel from '../components/note/OutlinePanel'
-import { notesApi } from '../api/notes'
+import { notesApi, type WritingAction, type WritingSource } from '../api/notes'
 import { noteTemplatesApi } from '../api/noteTemplates'
 import type { Note, NoteTemplate } from '../types/api'
 import ConfirmDialog from '../components/common/ConfirmDialog'
@@ -72,6 +72,10 @@ export default function NoteEditor() {
   const [editForm, setEditForm] = useState({ name: '', title: '', content: '', category: '', tags: '' })
   const [newTemplateForm, setNewTemplateForm] = useState({ name: '', title: '', content: '', category: '', tags: '' })
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const [writingAction, setWritingAction] = useState<WritingAction | null>(null)
+  const [previewAction, setPreviewAction] = useState<WritingAction | null>(null)
+  const [writingPreview, setWritingPreview] = useState('')
+  const [writingSources, setWritingSources] = useState<WritingSource[]>([])
   const templateApplied = useRef(false)
   const editorRef = useRef<TiptapEditorHandle>(null)
   const dragItem = useRef<number | null>(null)
@@ -159,6 +163,72 @@ export default function NoteEditor() {
     } catch {
       toast.error('下载失败')
     }
+  }
+
+  const runWritingAssist = async (action: WritingAction) => {
+    if (!content.trim()) {
+      toast.error('请先输入需要处理的正文')
+      return
+    }
+
+    setWritingAction(action)
+    setPreviewAction(action)
+    setWritingPreview('')
+    setWritingSources([])
+
+    try {
+      const response = await notesApi.assistStream(content, action)
+      if (!response.ok || !response.body) {
+        throw new Error('写作辅助请求失败')
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const events = buffer.split('\n\n')
+        buffer = events.pop() || ''
+
+        for (const event of events) {
+          const line = event.split('\n').find((item) => item.startsWith('data:'))
+          if (!line) continue
+
+          const data = JSON.parse(line.slice(5)) as {
+            type: 'sources' | 'delta' | 'done' | 'error'
+            content?: string
+            message?: string
+            sources?: WritingSource[]
+          }
+
+          if (data.type === 'sources') setWritingSources(data.sources || [])
+          if (data.type === 'delta') setWritingPreview((text) => text + (data.content || ''))
+          if (data.type === 'error') throw new Error(data.message || '写作辅助失败')
+        }
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '写作辅助失败')
+      setWritingPreview('')
+    } finally {
+      setWritingAction(null)
+    }
+  }
+
+  const applyWritingPreview = () => {
+    if (!writingPreview) return
+    setContent(
+      previewAction === 'continue'
+        ? `${content}${content.endsWith('\n') ? '' : '\n\n'}${writingPreview}`
+        : writingPreview,
+    )
+    setWritingPreview('')
+    setPreviewAction(null)
+    setWritingSources([])
+    toast.success('已应用到编辑器，点击保存后写入笔记')
   }
 
   const applyTemplate = (tpl: NoteTemplate) => {
@@ -635,8 +705,53 @@ export default function NoteEditor() {
               <div className="flex-1 min-w-[180px]">
                 <TagInput tags={tags} onChange={setTags} placeholder="添加标签..." />
               </div>
+              <div className="flex items-center gap-1">
+                {([
+                  ['continue', '续写'],
+                  ['expand', '扩写'],
+                  ['summarize', '缩写'],
+                ] as const).map(([action, label]) => (
+                  <button
+                    key={action}
+                    type="button"
+                    onClick={() => runWritingAssist(action)}
+                    disabled={writingAction !== null}
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] hover:border-[var(--color-accent)] disabled:opacity-50"
+                    title={`AI ${label}`}
+                  >
+                    <WandSparkles size={13} />
+                    {writingAction === action ? '生成中' : label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
+
+          {(writingPreview || writingAction) && (
+            <section className="mx-10 mb-5 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg-secondary)]">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)]">
+                <span className="text-xs font-medium text-[var(--color-text-secondary)]">
+                  {writingAction ? 'AI 正在生成' : 'AI 生成预览'}
+                </span>
+                {!writingAction && (
+                  <div className="flex gap-1">
+                    <button type="button" onClick={() => { setWritingPreview(''); setPreviewAction(null); setWritingSources([]) }} className="p-1 text-[var(--color-text-tertiary)] hover:text-[var(--color-text)]" title="丢弃预览">
+                      <X size={15} />
+                    </button>
+                    <button type="button" onClick={applyWritingPreview} className="p-1 text-[var(--color-accent)] hover:bg-[var(--color-accent-bg)]" title="应用到编辑器">
+                      <Check size={15} />
+                    </button>
+                  </div>
+                )}
+              </div>
+              {writingSources.length > 0 && (
+                <p className="px-3 pt-2 text-xs text-[var(--color-text-tertiary)]">
+                  参考：{writingSources.map((source) => source.title).join('、')}
+                </p>
+              )}
+              <pre className="px-3 py-3 text-sm text-[var(--color-text)] whitespace-pre-wrap font-sans leading-6 min-h-12">{writingPreview}</pre>
+            </section>
+          )}
 
           {/* ====== Crepe WYSIWYG Editor ====== */}
           <div className="flex-1 min-h-0">

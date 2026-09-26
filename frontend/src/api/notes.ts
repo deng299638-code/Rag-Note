@@ -2,6 +2,14 @@ import client from './client'
 import { endpoints } from './endpoints'
 import type { ApiResponse, DeleteCategoryResponse, Note, NoteListResponse, NoteStats, RelatedFragment } from '../types/api'
 
+export type WritingAction = 'continue' | 'expand' | 'summarize'
+
+export type WritingSource = {
+  note_id: number | null
+  title: string
+  score: number
+}
+
 export const notesApi = {
   list: async (params: { page?: number; page_size?: number; category?: string; tag?: string; sort_by?: string }) => {
     const res = await client.get<ApiResponse<NoteListResponse>>(endpoints.noteList, { params })
@@ -51,6 +59,18 @@ export const notesApi = {
   autocomplete: async (context: string) => {
     const res = await client.post<ApiResponse<{ completion: string }>>(endpoints.noteAutocomplete, { context })
     return res.data
+  },
+
+  assistStream: (context: string, action: WritingAction) => {
+    const token = localStorage.getItem('jwt_token')
+    return fetch(endpoints.writingAssistStream, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ context, action }),
+    })
   },
 
   batchDelete: async (ids: string[]) => {

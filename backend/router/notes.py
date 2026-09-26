@@ -15,7 +15,9 @@ from models.note import Note
 from schemas.common_schemas import ApiResponse, NoteStatsData
 from schemas.note_schemas import NoteCreate, NoteListResponse, NoteResponse, NoteUpdate, BatchIdsRequest, \
     BatchPinRequest, BatchCategoryRequest, NoteQueryParams, SearchResponse
+from schemas.writing_schemas import AutocompleteRequest
 from services.note_service import NoteService, get_note_service
+from services.writing_assistant_service import WritingAssistantService, get_writing_Service
 from utils.JWT import get_current_user_id
 
 note_router = APIRouter(prefix="/note", tags=["note"])
@@ -365,6 +367,18 @@ async def export_note(
             )
         }
     )
+
+@note_router.post("/autocomplete",response_model=ApiResponse[dict])
+async def autocomplete(payload:AutocompleteRequest,user_id : int = Depends(get_current_user_id),service:WritingAssistantService = Depends(get_writing_Service)):
+    completion = await service.autocomplete(payload.context)
+
+    return {
+        "code":200,
+        "message":"补全成功",
+        "data":{
+            "completion": completion,
+        }
+    }
 
 
 

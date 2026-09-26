@@ -23,6 +23,7 @@ export default defineConfig({
       '/knowledge/': { target: BACKEND_TARGET, changeOrigin: true },
       '/note/': { target: BACKEND_TARGET, changeOrigin: true },
       '/note-template/': { target: BACKEND_TARGET, changeOrigin: true },
+      '/writing': { target: BACKEND_TARGET, changeOrigin: true },
       '/review/': { target: BACKEND_TARGET, changeOrigin: true },
       '/health': { target: BACKEND_TARGET, changeOrigin: true },
       '/user': { target: BACKEND_TARGET, changeOrigin: true },

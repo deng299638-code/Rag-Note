@@ -49,6 +49,7 @@ export const endpoints = {
   noteAutocomplete: '/note/autocomplete',
   noteStats: '/note/stats',
   noteAssistStream: '/note/assist/stream',
+  writingAssistStream: '/writing/assist/stream',
 
   // Batch operations
   noteBatchDelete: '/note/batch/delete',
@@ -56,6 +57,23 @@ export const endpoints = {
   noteBatchCategory: '/note/batch/category',
   noteBatchPin: '/note/batch/pin',
   noteCategoryDelete: (category: string) => `/note/category/${encodeURIComponent(category)}`,
+
+  // Knowledge Graph
+  graphOverview: '/api/graph/overview',
+  graphEvents: '/api/graph/events',
+  graphEntity: (id: string) => `/api/graph/entity/${id}`,
+  graphEntityUpdate: (id: string) => `/api/graph/entities/${id}`,
+  graphEntityNeighbors: (id: string) => `/api/graph/entity/${id}/neighbors`,
+  graphEntityNotes: (id: string) => `/api/graph/entity/${id}/notes`,
+  graphNoteRelated: (id: string) => `/api/graph/notes/${id}/related`,
+  graphDocRelated: (id: string) => `/api/graph/docs/${id}/related`,
+  graphSearch: '/api/graph/search',
+  graphExtractLogs: '/api/graph/extract-logs',
+  graphEntities: '/api/graph/entities',
+  graphEntityMerge: '/api/graph/entities/merge',
+  graphTypes: '/api/graph/types',
+  graphRelations: '/api/graph/relations',
+  graphReExtract: (id: string) => `/api/graph/notes/${id}/re-extract`,
 
   // Review
   reviewToday: '/review/today',

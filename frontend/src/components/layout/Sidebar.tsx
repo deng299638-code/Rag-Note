@@ -11,6 +11,7 @@ import {
   Info,
   LogOut,
   Columns2,
+  Network,
 } from 'lucide-react'
 import { useUserStore } from '../../stores/useUserStore'
 import { authApi } from '../../api/auth'
@@ -21,6 +22,7 @@ const navItems = [
   { path: '/sessions', icon: History, labelKey: 'nav.sessions' },
   { path: '/review', icon: GraduationCap, labelKey: 'nav.review' },
   { path: '/knowledge', icon: Library, labelKey: 'nav.knowledge' },
+  { path: '/graph', icon: Network, labelKey: 'nav.graph' },
 ]
 
 const bottomItems = [

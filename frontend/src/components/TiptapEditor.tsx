@@ -376,6 +376,7 @@ const TiptapEditor = forwardRef<TiptapEditorHandle, TiptapEditorProps>(({ value,
       const { from } = editor.state.selection
       const start = Math.max(0, from - 200)
       const context = editor.state.doc.textBetween(start, from)
+      if (!context.trim()) return
       const posAtRequest = from
       const docBefore = editor.state.doc.textBetween(0, from)
       try {
