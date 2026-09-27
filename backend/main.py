@@ -5,6 +5,7 @@ from fastapi import FastAPI
 
 from graph.storage.neo4j_client import verify_neo4j_connection, GraphUnavailableError, \
     initialize_neo4j_schema, close_neo4j_driver
+from router.graph import graph_router
 from router.writing import WritingRouter
 
 # langchain-core 1.x 的 Generation.parsed 字段类型标注与 pydantic v2 序列化器不完全一致，
@@ -63,6 +64,7 @@ app.include_router(note_template_router)
 app.include_router(agent_router)
 app.include_router(Knowledge_Router)
 app.include_router(WritingRouter)
+app.include_router(graph_router)
 app.add_exception_handler(NoteNotFoundError,note_not_found_handler)#出现1处理2
 app.add_exception_handler(TemplateNotFoundError,note_template_not_found_handler)
 app.add_exception_handler(ChatSessionNotFoundError,session_not_found_handler)

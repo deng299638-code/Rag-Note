@@ -15,6 +15,7 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0',
     proxy: {
+      '/api': { target: BACKEND_TARGET, changeOrigin: true },
       '/chat/agent/': { target: BACKEND_TARGET, changeOrigin: true, ws: true },
       '/chat/rag/': { target: BACKEND_TARGET, changeOrigin: true },
       '/chat/session/': { target: BACKEND_TARGET, changeOrigin: true },
